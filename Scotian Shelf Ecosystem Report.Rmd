@@ -923,5 +923,61 @@ vesselCorr <- function(x) {
 
 ```
 
+```{r, echo=FALSE}
 
+Table_01 <- tibble::tribble(
+  ~"Management component", ~"Ecosystem Objective *", ~"Indicator",
+    
+      "Fishery",     "Maintain fishing pressure consistent with ecosystem's ability to recover
+",     "Fishing pressure, Landings, Fleet structure, Effort by fleet
+",
+      "Non-target species",     "Fish sustainably while minimizing adverse impacts on non-target species
+",     "Discards, Incidental catch, ghost gear
+",
+      "Other ocean users",     "",     "Aquaculture, Energy sector, Shipping and transport
+",
+      "Stakeholder engagement",     "",     "",
+     
+      "Habitat",     "Prevent unacceptable modification to habitat",     "Habitat types, habitat condition, connectivity
+",
+      "Oceanography",     "Key signals within the environment and ecosystem
+",     "AMO, NAO, SST, Bottom Temperature, stratification, Climate anomalies
+",
+      "Productivity and trophic structure",     "Do not cause unacceptable reduction to productivity
+",     "Primary and Secondary productivity, Size structure, PPR, Resource potential
+",
+      "Biodiversity",     "Do not cause unacceptable reduction in biodiversity
+",     "Guild-level biomass, Species Diversity/Richness/Evenness, Charasmatic species, Invasive species
+",
+  "Indigenous Traditional Knowledge",     "",     "",
+    
+      "Commercial",     "Ensure ecosystem maintains economic prosperity and livelihoods
+",     "Total revenue, Revenue components (Bennet indicator)
+",
+      "Non-commercial",     "Ensure ecosystem maintains economic prosperity and livelihoods
+",     "Recreational fishing, bait
+",
+       
+      "Healthy consumption",     "Ensure ecosystem continues to maintain happiness and wellbeing of individuals
+",     "Contaminants, parasites
+",
+      "Benefits",     "Ensure ecosystem continues to maintain happiness and wellbeing of individuals
+",     "Vulnerability index 
+",
+      "Equity",     "Ensure ecosystem continues to maintain happiness and wellbeing of individuals
+",     "Women and underrepresented groups in industry
+"
+  )
+
+
+kable(Table_01, digits = 3, row.names = FALSE, align = "l",
+              caption = NULL) %>% 
+  kable_paper("striped", full_width=F) %>%
+  pack_rows("Ocean Users",1,4 ) %>%
+  pack_rows("Ecological", 5,9) %>%
+  pack_rows("Economic", 10,11) %>%
+  pack_rows("Social and Cultural", 12, 14)
+#%>%
+ # as_image(width=8)
+```
 
