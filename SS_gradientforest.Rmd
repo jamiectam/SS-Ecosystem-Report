@@ -1,0 +1,2155 @@
+---
+title: "SS_gradientforest"
+author: "Jamie C Tam"
+date: "12/13/2021"
+output: html_document
+---
+
+## setup 
+```{r}
+#must be in R.3.62 or lower
+
+library(DT)
+library(tidyverse)
+library(reshape2)
+library(gradientForest)
+library(extendedForest)
+require(ggplot2)
+
+```
+
+
+## GF functions
+```{r}
+whiten <- function (dens, lambda = 0.9) 
+{
+  dens$y <- lambda * dens$y + (1 - lambda)/diff(range(dens$x))
+  dens
+}
+
+
+spRatio <- function (obj, imp.vars = NULL, imp.vars.names = imp.vars, leg.posn = "topright", 
+                     mfrow = n2mfrow(length(imp.vars)), 
+                     #           mfrow = length(imp.vars),
+                     mar = c(4.5, 1.5, 0.5,4.5), 
+                     omi = c(0.1, 0.25, 0.1, 0.1), bin = F, nbin = 101, 
+                     leg.panel = 1, barwidth = 1, cex.legend = 0.8, line.ylab = 1.5, 
+                     ...) 
+{
+  if (is.null(imp.vars)) 
+    imp.vars <- imp.var.names <- names(sort(rowMeans(obj$imp.rsq), 
+                                            decreasing = T))[1:2]
+  is.binned <- function(obj) {
+    compact <- obj$call$compact
+    if (is.null(compact)) 
+      FALSE
+    else eval(compact)
+  }
+  normalize.histogram <- function(ci, integral = 1, bin = F, 
+                                  nbin = 101) {
+    if (bin) {
+      brks <- seq(min(ci$x), max(ci$x), len = nbin)
+      xx <- cut(ci$x, breaks = brks, inc = T)
+      yy <- tapply(ci$y, xx, sum)
+      yy[is.na(yy)] <- 0
+      ci <- list(x = 0.5 * (brks[-1] + brks[-nbin]), y = yy)
+    }
+    dx <- min(diff(ci$x))
+    Id <- sum(ci$y * dx)
+    ci$y <- ci$y/Id * integral
+    ci
+  }
+  normalize.density <- function(d, integral = 1, integrate = T) {
+    Id <- if (integrate) 
+      integrate.density(d)
+    else 1
+    d$y <- d$y/Id * integral
+    d
+  }
+  integrate.density <- function(d) {
+    integrate(approxfun(d, rule = 2), lower = min(d$x), 
+              upper = max(d$x))$value
+  }
+  scale.density <- function(d, scale = 1/mean(d$y)) {
+    d$y <- d$y * scale
+    d
+  }
+  par(mfrow = mfrow)
+  nice.names <- structure(as.list(imp.vars.names), names = imp.vars)
+  for (i in imp.vars) {
+    imp <- importance(obj)[i]
+    resA <- obj$res[obj$res$var == i, ]
+    splits <- resA$split
+    w <- pmax(resA$improve.norm, 0)
+    X <- na.omit(obj$X[, i])
+    rX <- range(X)
+    dX <- diff(rX)
+    dImp <- density(splits, weight = w/sum(w), from = rX[1], 
+                    to = rX[2])
+    if ((dX/dImp$bw) > 50) 
+      dImp <- density(splits, weight = w/sum(w), from = rX[1], 
+                      to = rX[2], bw = dX/50)
+    dImpNorm <- normalize.density(dImp, imp, integrate = T)
+    dObs <- density(X, from = rX[1], to = rX[2])
+    if ((dX/dObs$bw) > 50) 
+      dObs <- density(X, from = rX[1], to = rX[2], bw = dX/50)
+    dObs <- whiten(dObs, lambda = 0.9)
+    dObsNorm <- normalize.density(dObs, imp, integrate = T)
+    ci <- cumimp(obj, i, standardize = F)
+    ci$y <- diff(c(0, ci$y))
+    ci <- normalize.histogram(ci, imp, bin = bin | !is.binned(obj), 
+                              nbin = nbin)
+    dStd <- dImp
+    dStd$y <- dImp$y/dObs$y
+    dStdNorm <- try(normalize.density(dStd, imp, integrate = T))
+    if (class(dStdNorm) == "try-error") 
+      dStdNorm <- normalize.histogram(dStd, imp)
+    plot(ci, type = "h", col = "grey60", xlim = range(splits), 
+         lwd = barwidth, ylim = c(0, max(dImpNorm$y, dObsNorm$y, 
+                                         dStdNorm$y) * 1.1), lend = 2, xlab = nice.names[[i]], 
+         ylab = "", ...)
+    #     lines(dImpNorm, col = "black", lwd = 2)
+    #     lines(dObsNorm, col = "red", lwd = 2)
+    lines(dStdNorm, col = "blue", lwd = 2)
+    abline(h = mean(dStdNorm$y)/mean(dStd$y), lty = 2, col = "blue")
+    #     if (i == imp.vars[leg.panel]) 
+    #       legend(leg.posn, legend = c("Density of splits", 
+    #                                   "Density of data", "Ratio of densities", "Ratio=1"), 
+    #              lty = c(1, 1, 1, 2), col = c("black", "red", 
+    #                                           "blue", "blue"), cex = cex.legend, bty = "n", 
+    #              lwd = 1)
+  }
+  mtext("Ratio of Densities", side = 2, line = line.ylab, outer = T)
+}
+
+
+spImportance <- function (obj, imp.vars = NULL, imp.vars.names = imp.vars, leg.posn = "topright", 
+                          mfrow = n2mfrow(length(imp.vars)), mar = c(4.5, 1.5, 0.5, 
+                                                                     4.5), omi = c(0.1, 0.25, 0.1, 0.1), bin = F, nbin = 101, 
+                          leg.panel = 1, barwidth = 1, cex.legend = 0.8, line.ylab = 1.5, 
+                          ...) 
+{
+  if (is.null(imp.vars)) 
+    imp.vars <- imp.var.names <- names(sort(rowMeans(obj$imp.rsq), 
+                                            decreasing = T))[1:2]
+  is.binned <- function(obj) {
+    compact <- obj$call$compact
+    if (is.null(compact)) 
+      FALSE
+    else eval(compact)
+  }
+  normalize.histogram <- function(ci, integral = 1, bin = F, 
+                                  nbin = 101) {
+    if (bin) {
+      brks <- seq(min(ci$x), max(ci$x), len = nbin)
+      xx <- cut(ci$x, breaks = brks, inc = T)
+      yy <- tapply(ci$y, xx, sum)
+      yy[is.na(yy)] <- 0
+      ci <- list(x = 0.5 * (brks[-1] + brks[-nbin]), y = yy)
+    }
+    dx <- min(diff(ci$x))
+    Id <- sum(ci$y * dx)
+    ci$y <- ci$y/Id * integral
+    ci
+  }
+  normalize.density <- function(d, integral = 1, integrate = T) {
+    Id <- if (integrate) 
+      integrate.density(d)
+    else 1
+    d$y <- d$y/Id * integral
+    d
+  }
+  integrate.density <- function(d) {
+    integrate(approxfun(d, rule = 2), lower = min(d$x), 
+              upper = max(d$x))$value
+  }
+  scale.density <- function(d, scale = 1/mean(d$y)) {
+    d$y <- d$y * scale
+    d
+  }
+  par(mfrow = mfrow)
+  nice.names <- structure(as.list(imp.vars.names), names = imp.vars)
+  for (i in imp.vars) {
+    imp <- importance(obj)[i]
+    resA <- obj$res[obj$res$var == i, ]
+    splits <- resA$split
+    w <- pmax(resA$improve.norm, 0)
+    X <- na.omit(obj$X[, i])
+    rX <- range(X)
+    dX <- diff(rX)
+    dImp <- density(splits, weight = w/sum(w), from = rX[1], 
+                    to = rX[2])
+    if ((dX/dImp$bw) > 50) 
+      dImp <- density(splits, weight = w/sum(w), from = rX[1], 
+                      to = rX[2], bw = dX/50)
+    dImpNorm <- normalize.density(dImp, imp, integrate = T)
+    dObs <- density(X, from = rX[1], to = rX[2])
+    if ((dX/dObs$bw) > 50) 
+      dObs <- density(X, from = rX[1], to = rX[2], bw = dX/50)
+    dObs <- whiten(dObs, lambda = 0.9)
+    dObsNorm <- normalize.density(dObs, imp, integrate = T)
+    ci <- cumimp(obj, i, standardize = F)
+    ci$y <- diff(c(0, ci$y))
+    ci <- normalize.histogram(ci, imp, bin = bin | !is.binned(obj), 
+                              nbin = nbin)
+    dStd <- dImp
+    dStd$y <- dImp$y/dObs$y
+    dStdNorm <- try(normalize.density(dStd, imp, integrate = T))
+    if (class(dStdNorm) == "try-error") 
+      dStdNorm <- normalize.histogram(dStd, imp)
+    plot(ci, type = "h", col = "grey60", xlim = range(splits), 
+         lwd = barwidth, ylim = c(0, max(dImpNorm$y, dObsNorm$y, 
+                                         dStdNorm$y) * 1.1), lend = 2, xlab = nice.names[[i]], 
+         ylab = "", ...)
+    lines(dImpNorm, col = "black", lwd = 2)
+    #     lines(dObsNorm, col = "red", lwd = 2)
+    #     lines(dStdNorm, col = "blue", lwd = 2)
+    #     abline(h = mean(dStdNorm$y)/mean(dStd$y), lty = 2, col = "blue")
+    #     if (i == imp.vars[leg.panel]) 
+    #       legend(leg.posn, legend = c("Density of splits", 
+    #                                   "Density of data", "Ratio of densities", "Ratio=1"), 
+    #              lty = c(1, 1, 1, 2), col = c("black", "red", 
+    #                                           "blue", "blue"), cex = cex.legend, bty = "n", 
+    #              lwd = 1)
+  }
+  mtext("Density of Splits", side = 2, line = line.ylab, outer = T)
+}
+
+
+spData <- function (obj, imp.vars = NULL, imp.vars.names = imp.vars, leg.posn = "topright", 
+                    mfrow = n2mfrow(length(imp.vars)), mar = c(4.5, 1.5, 0.5, 
+                                                               4.5), omi = c(0.1, 0.25, 0.1, 0.1), bin = F, nbin = 101, 
+                    leg.panel = 1, barwidth = 1, cex.legend = 0.8, line.ylab = 1.5, 
+                    ...) 
+{
+  if (is.null(imp.vars)) 
+    imp.vars <- imp.var.names <- names(sort(rowMeans(obj$imp.rsq), 
+                                            decreasing = T))[1:2]
+  is.binned <- function(obj) {
+    compact <- obj$call$compact
+    if (is.null(compact)) 
+      FALSE
+    else eval(compact)
+  }
+  normalize.histogram <- function(ci, integral = 1, bin = F, 
+                                  nbin = 101) {
+    if (bin) {
+      brks <- seq(min(ci$x), max(ci$x), len = nbin)
+      xx <- cut(ci$x, breaks = brks, inc = T)
+      yy <- tapply(ci$y, xx, sum)
+      yy[is.na(yy)] <- 0
+      ci <- list(x = 0.5 * (brks[-1] + brks[-nbin]), y = yy)
+    }
+    dx <- min(diff(ci$x))
+    Id <- sum(ci$y * dx)
+    ci$y <- ci$y/Id * integral
+    ci
+  }
+  normalize.density <- function(d, integral = 1, integrate = T) {
+    Id <- if (integrate) 
+      integrate.density(d)
+    else 1
+    d$y <- d$y/Id * integral
+    d
+  }
+  integrate.density <- function(d) {
+    integrate(approxfun(d, rule = 2), lower = min(d$x), 
+              upper = max(d$x))$value
+  }
+  scale.density <- function(d, scale = 1/mean(d$y)) {
+    d$y <- d$y * scale
+    d
+  }
+  par(mfrow = mfrow)
+  nice.names <- structure(as.list(imp.vars.names), names = imp.vars)
+  for (i in imp.vars) {
+    imp <- importance(obj)[i]
+    resA <- obj$res[obj$res$var == i, ]
+    splits <- resA$split
+    w <- pmax(resA$improve.norm, 0)
+    X <- na.omit(obj$X[, i])
+    rX <- range(X)
+    dX <- diff(rX)
+    dImp <- density(splits, weight = w/sum(w), from = rX[1], 
+                    to = rX[2])
+    if ((dX/dImp$bw) > 50) 
+      dImp <- density(splits, weight = w/sum(w), from = rX[1], 
+                      to = rX[2], bw = dX/50)
+    dImpNorm <- normalize.density(dImp, imp, integrate = T)
+    dObs <- density(X, from = rX[1], to = rX[2])
+    if ((dX/dObs$bw) > 50) 
+      dObs <- density(X, from = rX[1], to = rX[2], bw = dX/50)
+    dObs <- whiten(dObs, lambda = 0.9)
+    dObsNorm <- normalize.density(dObs, imp, integrate = T)
+    ci <- cumimp(obj, i, standardize = F)
+    ci$y <- diff(c(0, ci$y))
+    ci <- normalize.histogram(ci, imp, bin = bin | !is.binned(obj), 
+                              nbin = nbin)
+    dStd <- dImp
+    dStd$y <- dImp$y/dObs$y
+    dStdNorm <- try(normalize.density(dStd, imp, integrate = T))
+    if (class(dStdNorm) == "try-error") 
+      dStdNorm <- normalize.histogram(dStd, imp)
+    plot(ci, type = "h", col = "grey60", xlim = range(splits), 
+         lwd = barwidth, ylim = c(0, max(dImpNorm$y, dObsNorm$y, 
+                                         dStdNorm$y) * 1.1), lend = 2, xlab = nice.names[[i]], 
+         ylab = "", ...)
+    #     lines(dImpNorm, col = "black", lwd = 2)
+    lines(dObsNorm, col = "red", lwd = 2)
+    #     lines(dStdNorm, col = "blue", lwd = 2)
+    #     abline(h = mean(dStdNorm$y)/mean(dStd$y), lty = 2, col = "blue")
+    #     if (i == imp.vars[leg.panel]) 
+    #       legend(leg.posn, legend = c("Density of splits", 
+    #                                   "Density of data", "Ratio of densities", "Ratio=1"), 
+    #              lty = c(1, 1, 1, 2), col = c("black", "red", 
+    #                                           "blue", "blue"), cex = cex.legend, bty = "n", 
+    #              lwd = 1)
+  }
+  mtext("Density of Data", side = 2, line = line.ylab, outer = T)
+}
+
+
+spCumPlot <- function (obj, imp.vars = NULL, imp.vars.names = imp.vars, leg.posn = "topleft", 
+                       leg.nspecies = 10, legend = TRUE, mfrow = rev(n2mfrow(length(imp.vars) * 
+                                                                               (show.species + show.overall))), show.species = TRUE, 
+                       show.overall = TRUE, mar = c(0, 2.1, 1.1, 0), omi = c(0.75, 
+                                                                             0.75, 0.1, 0.1), common.scale = F, line.ylab = 1, cex.legend = 0.75, 
+                       ...) 
+{
+  if (is.null(imp.vars)) 
+    imp.vars <- imp.var.names <- names(importance(obj))[1:2]
+  par(mfrow = mfrow)
+  require(RColorBrewer)
+  
+  plotPalette <- colorRampPalette(brewer.pal(length(levels(obj$res.u$spec)), "Dark2"))
+  cols <- plotPalette(length(levels(obj$res.u$spec)))
+  
+  #   cols <- rainbow(length(levels(obj$res.u$spec)))
+  names(cols) <- levels(obj$res.u$spec)
+  xaxt <- if (show.overall) 
+    "n"
+  else "s"
+  if (show.species) {
+    for (varX in imp.vars) {
+      CU <- cumimp(obj, varX, "Species")
+      xlim <- range(sapply(CU, "[[", "x"))
+      ylim <- range(sapply(CU, "[[", "y"))
+      plot(xlim, ylim, type = "n", xlab = if (show.overall) 
+        ""
+        else imp.vars.names[imp.vars == varX], ylab = "", 
+        xaxt = xaxt, ...)
+      for (species in names(CU)) {
+        isub <- seq(1, length(CU[[species]]$x), len = pmin(500, 
+                                                           length(CU[[species]]$x)))
+        lines(CU[[species]]$x[isub], CU[[species]]$y[isub], 
+              type = "s", col = cols[species], lwd = 1.5)
+      }
+      no.species <- length(names(cols))
+      imp.sp <- sapply(CU, function(cu) max(cu$y))
+      best <- order(-imp.sp)[1:min(leg.nspecies, length(imp.sp))]
+      if (legend) 
+        legend(x = leg.posn, legend = names(cols)[best], 
+               pch = rep(16, no.species)[best], col = cols[best], 
+               bty = "n", cex = cex.legend, pt.lwd = 2)
+    }
+  }
+  if (show.overall) {
+    for (varX in imp.vars) {
+      CU <- cumimp(obj, varX)
+      ymax <- max(CU$y)
+      if (varX == imp.vars[1]) 
+        ymax1 <- ymax
+      isub <- seq(1, length(CU$x), len = pmin(500, length(CU$x)))
+      plot(CU$x[isub], CU$y[isub], type = "s", ylab = "", 
+           xlab = imp.vars.names[imp.vars == varX], ylim = c(0, 
+                                                             if (common.scale) ymax1 else ymax), ...)
+    }
+  }
+  mtext("Cumulative importance", side = 2, line = line.ylab, 
+        outer = TRUE)
+}
+
+impPlot <- function (obj, ..., las = 1, cex.axis = 0.7, cex.names = cex.axis, 
+                     horiz = TRUE) 
+{
+  #     imp.a <- importance(obj, "Accuracy")
+  imp.w <- importance(obj, "Weighted")
+  #     o.a <- order(imp.a)
+  o.w <- order(imp.w)
+  #     barplot(imp.a[o.a], names = names(imp.a[o.a]), horiz = horiz, 
+  #             main = "Accuracy importance", las = las, cex.axis = cex.axis, 
+  #             cex.names = cex.names, ...)
+  barplot(imp.w[o.w], names = names(imp.w[o.w]), horiz = horiz, 
+          las = 1, 
+          #             main = expression(paste(R^2, " weighted importance")),
+          main = "",
+          las = las, cex.axis = cex.axis, cex.names = cex.names, 
+          ...)
+}
+
+
+combinedCumPlot <- function (obj, weight = c("uniform", "species", "rsq.total", 
+                                             "rsq.mean", "site", "site.species", "site.rsq.total", "site.rsq.mean")[3], 
+                             use.diff = FALSE, prednames = names(obj$X)[-1], show.weights = FALSE, 
+                             show.gears = TRUE, sort = TRUE, ...) 
+  #   obj <- f2
+  #     weight = "rsq.total"
+{
+  if ((nw <- length(weight)) > 1) 
+    show.gears <- show.weights <- FALSE
+  gearnames <- names(obj$dens)[-1]
+  CU <- if (!show.gears) 
+    list()
+  else lapply(prednames, function(predictor) do.call("rbind", 
+                                                     lapply(obj$gears[[predictor]], function(gear) {
+                                                       cu <- cumimp(obj, predictor, gear = gear)
+                                                       dens <- density(obj, predictor, gear = gear, gridded = T)
+                                                       if (use.diff) 
+                                                         cu$y <- diff(c(0, cu$y))
+                                                       data.frame(predictor = predictor, gear = gear, value = cu$x, 
+                                                                  CU = cu$y, dens = dens$y)
+                                                     })))
+  CU <- c(CU, lapply(prednames, function(predictor) do.call("rbind", 
+                                                            lapply(weight, function(w) {
+                                                              cu <- cumimp(obj, predictor, weight = w)
+                                                              if (use.diff) cu$y <- diff(c(0, cu$y))
+                                                              data.frame(predictor = predictor, gear = paste("combined", 
+                                                                                                             w, sep = "."), value = cu$x, CU = cu$y, dens = -1)
+                                                            }))))
+  CU <- do.call("rbind", CU)
+  imp <- importance(obj)
+  o <- order(-imp)
+  CU$predictor <- ordered(CU$predictor, levels = if (sort) 
+    names(sort(-imp))
+    else prednames)
+  
+  #   CU$predictor <- as.character(CU$predictor)
+  #   CU$predictor[CU$predictor == "EXP" &
+  #      CU$gear %in% c("ESS", "WSS")] <- "EXP_CA"
+  #   CU$predictor <- as.factor(CU$predictor)
+  #   
+  
+  colPal <- c("GB" = "#E41A1C", "GOM" = "#377EB8", "MAB" = "#4DAF4A", "SS" = "#984EA3", 
+              "ESS" = "#FF7F00", "WSS" = "#A65628", "combined.rsq.total" =  "#000000")
+  sizPal <- c(rep(1,6), 1.75)
+  alphPal <- c(rep(1,6), .5)
+  names(sizPal) <- names(colPal)  
+  
+  cuPlot <- ggplot(CU, aes(x = value, y = CU)) +
+    geom_line(aes(color = gear, size = gear, alpha = gear)) +
+    scale_color_manual(values = colPal) +
+    scale_size_manual(values = sizPal, guide = "none") +
+    scale_alpha_manual(values = alphPal, guide = "none") +
+    facet_wrap(~predictor, scales = "free_x")+
+    labs(list(color = "Ecosystem",
+              x = "Predictor value", 
+              y = "Cumulative Importance")) +
+    theme_bw()
+  cuPlot
+}
+
+
+shift<-function(x,shift_by){
+  stopifnot(is.numeric(shift_by))
+  stopifnot(is.numeric(x))
+  
+  if (length(shift_by)>1)
+    return(sapply(shift_by,shift, x=x))
+  
+  out<-NULL
+  abs_shift_by=abs(shift_by)
+  if (shift_by > 0 )
+    out<-c(tail(x,-abs_shift_by),rep(NA,abs_shift_by))
+  else if (shift_by < 0 )
+    out<-c(rep(NA,abs_shift_by), head(x,-abs_shift_by))
+  else
+    out<-x
+  out
+}
+
+panel.cor <- function(x, y, digits=2, prefix="", cex.cor) 
+{
+  usr <- par("usr"); on.exit(par(usr)) 
+  par(usr = c(0, 1, 0, 1)) 
+  r <- abs(cor(x, y)) 
+  txt <- format(c(r, 0.123456789), digits=digits)[1] 
+  txt <- paste(prefix, txt, sep="") 
+  if(missing(cex.cor)) cex <- 0.8/strwidth(txt) 
+  
+  test <- cor.test(x,y) 
+  # borrowed from printCoefmat
+  Signif <- symnum(test$p.value, corr = FALSE, na = FALSE, 
+                   cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1),
+                   symbols = c("***", "**", "*", ".", " ")) 
+  
+  text(0.5, 0.5, txt, cex = cex * r) 
+  text(.8, .8, Signif, cex=cex, col=2) 
+}
+
+
+PCbiplot <- function(PC, x="PC1", y="PC2") {
+  # PC being a prcomp object
+  data <- data.frame(obsnames=row.names(PC$x), PC$x)
+  percent <- round((((PC$sdev)^2 / sum(PC$sdev^2))*100)[1:2])
+  plot <- ggplot(data, aes_string(x=x, y=y)) + theme_bw() + geom_text(alpha=.6, size=3, aes(label=obsnames)) + 
+    geom_path(alpha=.2, size=.5)+
+    xlab(paste0("PC1 (", percent[1], "%)")) +
+    ylab(paste0("PC2 (", percent[2], "%)")) 
+  
+  plot <- plot + geom_hline(aes(0), size=.2) + geom_vline(aes(0), size=.2)
+  datapc <- data.frame(varnames=rownames(PC$rotation), PC$rotation)
+  mult <- min(
+    (max(data[,y]) - min(data[,y])/(max(datapc[,y])-min(datapc[,y]))),
+    (max(data[,x]) - min(data[,x])/(max(datapc[,x])-min(datapc[,x])))
+  )
+  datapc <- transform(datapc,
+                      v1 = .7 * mult * (get(x)),
+                      v2 = .7 * mult * (get(y))
+  )
+  plot <- plot +  geom_text(data=datapc, aes(x=v1, y=v2, label=varnames), size = 5, vjust=1, color="red")
+  plot <- plot + geom_segment(data=datapc, aes(x=0, y=0, xend=v1, yend=v2), arrow=arrow(length=unit(0.2,"cm")), alpha=0.75, color="red")
+  plot
+}
+
+
+spCompPlot <- function (obj, imp.vars = NULL, imp.vars.names = imp.vars, leg.posn = "topleft", 
+                        leg.nspecies = 10, legend = TRUE, show.species = TRUE, 
+                        show.overall = TRUE, mar = c(0, 2.1, 1.1, 0), omi = c(0.75, 
+                                                                              0.75, 0.1, 0.1), common.scale = F, line.ylab = 1, cex.legend = 0.75, 
+                        ...) 
+{
+  if (is.null(imp.vars)) 
+    imp.vars <- imp.var.names <- names(importance(obj))[1:2]
+  #par(mfrow = mfrow)
+  require(RColorBrewer)
+  
+  plotPalette <- colorRampPalette(brewer.pal(length(levels(obj$res.u$spec)), "Dark2"))
+  cols <- plotPalette(length(levels(obj$res.u$spec)))
+  
+  #   cols <- rainbow(length(levels(obj$res.u$spec)))
+  names(cols) <- levels(obj$res.u$spec)
+  xaxt <- if (show.overall) 
+    "n"
+  else "s"
+  if (show.species) {
+    for (varX in imp.vars) {
+      CU <- cumimp(obj, varX, "Species")
+      xlim <- range(sapply(CU, "[[", "x"))
+      ylim <- range(sapply(CU, "[[", "y"))
+      plot(xlim, ylim, type = "n", xlab = if (show.overall) 
+        ""
+        else imp.vars.names[imp.vars == varX], ylab = "", 
+        xaxt = xaxt, ...)
+      for (species in names(CU)) {
+        isub <- seq(1, length(CU[[species]]$x), len = pmin(500, 
+                                                           length(CU[[species]]$x)))
+        lines(CU[[species]]$x[isub], CU[[species]]$y[isub], 
+              type = "s", col = cols[species], lwd = 1.5)
+      }
+      no.species <- length(names(cols))
+      imp.sp <- sapply(CU, function(cu) max(cu$y))
+      best <- order(-imp.sp)[1:min(leg.nspecies, length(imp.sp))]
+      if (legend) 
+        legend(x = leg.posn, legend = names(cols)[best], 
+               pch = rep(16, no.species)[best], col = cols[best], 
+               bty = "n", cex = cex.legend, pt.lwd = 2)
+    }
+  }
+  if (show.overall) {
+    for (varX in imp.vars) {
+      CU <- cumimp(obj, varX)
+      ymax <- max(CU$y)
+      if (varX == imp.vars[1]) 
+        ymax1 <- ymax
+      isub <- seq(1, length(CU$x), len = pmin(500, length(CU$x)))
+      plot(CU$x[isub], CU$y[isub], type = "s", ylab = "", 
+           xlab = imp.vars.names[imp.vars == varX], ylim = c(0, 
+                                                             if (common.scale) ymax1 else ymax), ...)
+    }
+  }
+  mtext("Cumulative importance", side = 2, line = line.ylab, 
+        outer = TRUE)
+}
+
+impPlot <- function (obj, ..., las = 1, cex.axis = 0.7, cex.names = cex.axis, 
+                     horiz = TRUE) 
+{
+  #     imp.a <- importance(obj, "Accuracy")
+  imp.w <- importance(obj, "Weighted")
+  #     o.a <- order(imp.a)
+  o.w <- order(imp.w)
+  #     barplot(imp.a[o.a], names = names(imp.a[o.a]), horiz = horiz, 
+  #             main = "Accuracy importance", las = las, cex.axis = cex.axis, 
+  #             cex.names = cex.names, ...)
+  barplot(imp.w[o.w], names = names(imp.w[o.w]), horiz = horiz, 
+          las = 1, 
+          #             main = expression(paste(R^2, " weighted importance")),
+          main = "",
+          las = las, cex.axis = cex.axis, cex.names = cex.names, 
+          ...)
+}
+```
+
+## gradientforest2
+```{r}
+library(devtools)
+# install_github("slarge/gradientForest2/pkg/gradientForest")
+
+set.seed(627)
+#########
+# require(reshape2)
+# require(gradientForest)
+# require(ggplot2)
+# require(extendedForest)
+
+###########
+
+combined.cumulative.importance.plot <-
+  function (obj,weight=c("uniform","species","rsq.total","rsq.mean","site","site.species","site.rsq.total","site.rsq.mean")[3],
+            use.diff=FALSE, prednames=names(obj$X)[-1], show.weights=FALSE, show.gf.names=TRUE, sort=TRUE, ...)
+  {
+    if ((nw <- length(weight)) > 1) show.gf.names <- show.weights <- FALSE
+    gearnames <- names(obj$dens)[-1]
+    CU <- if(!show.gf.names) list() else 
+      lapply(prednames, function(predictor) do.call("rbind",lapply(obj$gf.names[[predictor]], function(gear) {
+        cu <- cumimp(obj,predictor,gf.name=gear)
+        dens <- density(obj,predictor,gf.name=gear,gridded=T)
+        if (use.diff) cu$y <- diff(c(0,cu$y))
+        data.frame(predictor=predictor,gf.name=gear,value=cu$x,CU=cu$y,dens=dens$y)
+      })))      
+    CU <- c(CU,
+            lapply(prednames, function(predictor) do.call("rbind",lapply(weight, function(w) {
+              cu <- cumimp(obj,predictor,weight=w)
+              if (use.diff) cu$y <- diff(c(0,cu$y))
+              data.frame(predictor=predictor,gf.name=paste("combined",w,sep="."),value=cu$x,CU=cu$y,dens=-1)
+            })))
+    )
+    CU <- do.call("rbind",CU)
+    imp <- importance(obj)
+    o <- order(-imp)
+    CU$predictor <- ordered(CU$predictor, levels=if(sort) names(sort(-imp)) else prednames)
+    sps <- trellis.par.get("superpose.line")
+    n <- nlevels(CU$gf.name)
+    ng <- n - nw
+    CU <- transform(CU, maxdens=tapply(dens,interaction(value,predictor),max,na.rm=T)[interaction(value,predictor)])
+    CU <- transform(CU, hue=as.numeric(unclass(gf.name))/n, saturation=pmax(dens/maxdens,0.1))
+    sps$lwd <- rep(c(3,3),c(ng,nw))
+    sps$col <- hsv(h=1:n/n,s=1,v=1:n < n) #rainbow(n,end=1)
+    trellis.par.set("superpose.line",sps)
+    pgfun <- function(x,y,subscripts,groups,group.value,...){
+      n <- length(x)
+      panel.segments(x[-1],y[-1],x[-n],y[-n],lwd=with(subset(CU[subscripts,],gf.name==group.value),ifelse(dens != -1,3,1)),
+                     col=with(subset(CU[subscripts,],gf.name==group.value),hsv(h=hue[-1],s=ifelse(is.na(saturation[-1]),0,saturation[-1]),v=dens != -1)))
+    }
+    print(xyplot(
+      CU~value|predictor,
+      data=CU,
+      groups=gf.name,      
+      type='l',
+      scales=list(y=list(relation="same"),x=list(relation="free"),cex=0.5),
+      par.strip.text=list(cex=0.5),
+      ylab=if (use.diff) "Importance" else "Cumulative Importance",
+      xlab="Predictor value",
+      as.table=T,
+      panel="panel.superpose",
+      panel.groups=if(show.weights) pgfun else panel.xyplot,
+      key=list(
+        space="top",
+        columns=min(n,3),
+        text=list(levels(CU$gf.name)),
+        lines=list(type='l',col=trellis.par.get("superpose.line")$col[1:n],
+                   lwd=trellis.par.get("superpose.line")$lwd[1:n])
+      )
+    ))
+  }
+
+###########
+combined.performance.plot <-
+  function(obj,horizontal = FALSE, show.names = FALSE, las = 2, cex.axis = 0.7, ...)
+  {
+    Ylab = expression(R^2)
+    Box.temp <- boxplot(split(obj$rsq,factor(rep(names(obj$nspec),obj$nspec))),plot=FALSE)
+    Bxp.temp <- bxp(Box.temp, show.names = show.names, horizontal = horizontal, width=obj$nspec, las = las, cex.axis = cex.axis)
+    axis(labels=Box.temp$names,side=1+horizontal,at=Bxp.temp,cex.axis=0.45,padj=0,las=2)
+    mtext(Ylab,side=2-horizontal,line=2.5)
+    title("Overall performance of random forests by gradientForest objects")
+  }
+
+#################
+
+
+combinedGradientForest <-
+  function(..., nbin=101, method=2, standardize=c("before","after")[1])
+  {
+    std.options <- c("before","after")
+    if (is.na(std.option <- pmatch(standardize,std.options)))
+      stop(paste('Unmatched standardize value "',standardize,'". Expecting "before" or "after"',sep=""))
+    
+    fList <- list(...)
+    ngear <- length(fList)
+    if(!all(sapply(fList,inherits,"gradientForest")))
+      stop("Every argument must be a gradientForest")
+    #
+    #   assign forest names
+    if(is.null(gearnames <- names(fList)))
+      gearnames <- paste("F",1:ngear,sep="")
+    if (any(empty <- gearnames==""))
+      gearnames[empty] <- paste("F",1:ngear,sep="")[empty]
+    names(fList) <- gearnames
+    #
+    #   check the predictor names are the same
+    npred <- sapply(fList, function(obj) ncol(obj$X))
+    nsite <- sapply(fList, function(obj) nrow(obj$X))
+    #    if(!all(npred == npred[1]))
+    #      stop("Every forest must have the same number of predictors")
+    prednames <- lapply(fList, function(obj) sort(names(obj$X)))  # TO DO: allow for sorting
+    allpreds <- unique(sort(unlist(prednames)))
+    #   find gradientForest objects that support each predictor
+    gf.names <- lapply(namenames(allpreds), function(predictor) gearnames[sapply(prednames, is.element, el=predictor)])
+    #    if(!all(prednames == prednames[,1]))
+    #      stop("Every forest must have the same predictors")
+    #    prednames <- prednames[,1]
+    #    npred <- npred[1]
+    #
+    #   combined predictor matrix and common bins for importance curve grid
+    create.df.aux <- function(X) as.data.frame(do.call("cbind",lapply(namenames(allpreds), function(pred) {res <- X[[pred]]; if(is.null(res)) rep(0,nrow(X)) else res})))
+    create.df <- function(X,transpose=F) {
+      if (transpose) X <- as.data.frame(t(X))
+      X <- create.df.aux(X)
+      if (transpose) X <- as.data.frame(t(X))
+      X
+    }
+    
+    X <- do.call("rbind",lapply(gearnames, function(a) {cbind(gf.name=a,create.df(fList[[a]]$X))}))
+    #    X <- do.call("rbind",lapply(gearnames, function(a) {cbind(gf.name=a,fList[[a]]$X)}))
+    bins <- do.call("cbind",lapply(X[allpreds], function(x) bin(x,nbin=nbin)))
+    imp.rsq.list <- lapply(fList, function(x) create.df(x$imp.rsq,transpose=T))
+    imp.rsq <- do.call("cbind",imp.rsq.list)
+    rsq <- unlist(lapply(fList, function(x) x$result))
+    #
+    #   combined density calculation
+    X_r <- cbind(X[,1], stack(X[allpreds]))
+    names(X_r) <- c("gf.name","value","predictor")
+    nspec <- sapply(fList,"[[","species.pos.rsq")
+    X_r$nspec <- nspec[X_r$gf.name]
+    X_r <- na.omit(X_r)
+    dens <- with(X_r,tapply(1:nrow(X_r),predictor,function(sub) {
+      whiten(density(value[sub],weight=nspec[sub]/sum(nspec[sub])),lambda=0.95)
+    }))
+    dens <- c(list(Combined=dens),lapply(fList, function(x) x$dens))
+    #
+    #   Gather the overall cumulative importances from each gradientForest
+    #   Combine cumulative importances
+    #   Normalize relative to combined importance
+    #
+    gridded.cumulative.importance <- function(obj, predictor) {
+      cu <- cumimp(obj, predictor=predictor, standardize_after=(std.options[std.option]=="after"))
+      grid <- bins[,predictor]
+      if (length(cu$x)==1)
+        y <- approx(cu$x,cu$y,grid,rule=2,method="constant",yleft=0)$y
+      else y <- approx(cu$x,cu$y,grid,rule=2,method="linear")$y
+      list(x=grid, y=y)
+    }
+    #
+    #   Linear interpolation to grid
+    #   Density outside survey is zero
+    #
+    interpolate <- function(xy, grid) {
+      res <- approx(xy$x,xy$y,grid,rule=1,method="linear")$y
+      res[is.na(res)] <- 0
+      res
+    }
+    
+    CU <- lapply(namenames(allpreds), function(predictor)
+      lapply(fList[gf.names[[predictor]]], gridded.cumulative.importance, predictor=predictor))
+    rsq.total <- sapply(lapply(fList,"[[","result"),sum)
+    imp.rsq.total <- sapply(imp.rsq.list,rowSums,na.rm=TRUE)
+    for (predictor in allpreds) {
+      g <- gf.names[[predictor]]
+      weight <- rbind(
+        uniform = rep(1,length(g)), 
+        species = nspec[g], 
+        rsq.total = imp.rsq.total[predictor,g],
+        rsq.mean = imp.rsq.total[predictor,g]/nspec[g],
+        site = nsite[g], 
+        site.species = nsite[g]*nspec[g], 
+        site.rsq.total = nsite[g]*imp.rsq.total[predictor,g],
+        site.rsq.mean = nsite[g]*imp.rsq.total[predictor,g]/nspec[g]
+      )
+      densList <- lapply(dens[c("Combined",g)],"[[",predictor) # list of densities, combined version first
+      grid <- bins[,predictor]
+      densMat <- sapply(densList, interpolate, grid=grid)
+      CU[[predictor]][["density"]] <- list(x=grid,y=densMat)
+      if (method==2) {
+        CUmat <- combine.cumulative.importance(CU[[predictor]][g], densMat, grid, weight)
+      } else if (method==1) {
+        imp <- rowMeans(imp.rsq)[predictor]
+        CUmat <- combine.cumulative.importance.method1(CU[[predictor]][g], densMat, grid, weight, imp)
+      } else stop(paste("Unknown method:",method))
+      for (i in rownames(weight))
+        CU[[predictor]][[paste("combined",i,sep=".")]] <- list(x=grid,y=CUmat[,i])
+    }
+    
+    out <- list(
+      call = match.call(),
+      X = X,
+      dens = dens,
+      imp.rsq = imp.rsq,
+      rsq = rsq,
+      nspec = nspec,
+      CU = CU,
+      gf.names = gf.names
+    )
+    class(out) <- c("combinedGradientForest","list")
+    out
+  }
+###########################
+cumimp.combinedGradientForest <-
+  function (x, predictor, weight=c("uniform","species","rsq.total","rsq.mean","site","site.species","site.rsq.total","site.rsq.mean")[3], gf.name, ...)
+  {
+    if (!inherits(x,"combinedGradientForest"))
+      stop(paste("'x' must be a combinedGradientForest object"))
+    if (length(predictor) != 1)
+      stop(paste("'predictor' must be a single string"))
+    if (!is.element(predictor,names(x$X)[-1]))
+      stop(paste("Predictor",predictor,"does not belong to combinedGradientForest object"))
+    if (is.na(option <- pmatch(weight,c("uniform","species","rsq.total","rsq.mean","site","site.species","site.rsq.total","site.rsq.mean"))))
+      stop(paste('Unmatched weight "',weight,'". Expecting one of "uniform", "species", "rsq.total", "rsq.mean", "site", "site.species", "site.rsq.total" or "site.rsq.mean"',sep=""))
+    
+    if (missing(gf.name)) {
+      res <- x$CU[[predictor]][[paste("combined",weight,sep=".")]]
+    } else {
+      res <- x$CU[[predictor]][[gf.name]]
+    }
+    res
+  }
+########################
+density.combinedGradientForest <-
+  function(x,predictor,gridded=F,gf.name,...)
+  {
+    if (!inherits(x,"combinedGradientForest"))
+      stop(paste("'x' must be a combinedGradientForest object"))
+    if(!gridded) {
+      if(missing(gf.name))
+        x$dens$Combined[[predictor]]
+      else x$dens[[gf.name]][[predictor]]
+    } else {
+      if(missing(gf.name))
+        with(x$CU[[predictor]]$density, list(x=x, y=y[,"Combined"]))
+      else with(x$CU[[predictor]]$density, list(x=x, y=y[,gf.name]))
+    }  
+  }
+#############################
+density.gradientForest <-
+  function(x,predictor,...)
+  {
+    if (!inherits(x,"gradientForest"))
+      stop(paste("'x' must be a gradientForest object"))
+    x$dens[[predictor]]
+  }
+
+###########################
+`importance.combinedGradientForest` <-
+  function (x, type=c("Weighted","Raw","Species")[1], sort=TRUE, ...)
+  {
+    if (!inherits(x,"combinedGradientForest"))
+      stop(paste("'x' must be a combinedGradientForest object"))
+    weighted <- rowSums(x$imp.rsq, na.rm=TRUE)/ncol(x$imp.rsq)
+    if (sort)
+      o <- order(-weighted)
+    else o <- 1:length(weighted)
+    nam <- rownames(x$imp.rsq)
+    res <- switch(pmatch(type,c("Weighted","Raw","Species")),
+                  weighted[o],
+                  rowSums(sweep(x$imp.rsq,2,x$rsq,"/"), na.rm=TRUE)[o]/ncol(x$imp.rsq),
+                  if (sort) sort(x$rsq,decreasing=T) else x$rsq
+    )
+    if (is.null(res))
+      stop(paste('Unmatched type "',type,'". Expecting one of "Weighted", "Raw" or "Species"',sep=""))
+    else res
+  }
+##################
+`plot.combinedGradientForest` <-
+  function (x, plot.type = c("Overall.Importance","Predictor.Ranges",
+                             "Predictor.Density","Cumulative.Importance","Performance")[1],
+            par.args=NULL,plot.args=NULL,...)
+    
+  {   plot.options <- c("Overall.Importance","Predictor.Ranges","Predictor.Density","Cumulative.Importance","Performance")
+  if (!inherits(x,"combinedGradientForest"))
+    stop(paste("'x' must be a combinedGradientForest object"))
+  if (is.na(plot.option <- pmatch(plot.type,plot.options)))
+    stop(paste('Unmatched plot.type "',plot.type,'". Expecting one of "Overall.Importance", "Predictor.Ranges", "Predictor.Density", "Cumulative.Importance" or "Performance")',sep=""))
+  
+  old.par<-par(no.readonly=TRUE)
+  on.exit(par(old.par))
+  
+  amend.args <- function(default.args, new.args) {
+    # replace those that match
+    for(arg in intersect(names(default.args), names(new.args))) 
+      default.args[[arg]] <- new.args[[arg]]
+    # append those that don't match
+    extra <- new.args[is.na(match(names(new.args),names(default.args)))]
+    c(default.args,extra)
+  }
+  
+  
+  if(plot.options[plot.option]=="Overall.Importance"){  
+    plot.args.def <- amend.args(list(las = 1, cex.axis = 0.7, cex.names = 0.7), plot.args)
+    plot.args.def<- amend.args(plot.args.def,list(...))     
+    par.args.def <- amend.args(list(mfrow = c(1, 2), mar = c(4, 6, 2, 1)), par.args)
+    par(par.args.def)    
+    do.call("overall.importance.combinedGradientForest.plot",c(list(obj=quote(x)),plot.args.def))
+  }
+  
+  
+  if(plot.options[plot.option]=="Predictor.Ranges"){	
+    plot.args.def<- amend.args(plot.args,list(...))     
+    if(!is.null(par.args)) par(par.args)
+    do.call("predictor.ranges.plot",c(list(obj=quote(x)),plot.args.def))
+  }
+  
+  
+  
+  if(plot.options[plot.option]=="Predictor.Density"){	
+    plot.args.def<- amend.args(plot.args,list(...))     
+    if(!is.null(par.args)) par(par.args)  
+    do.call("predictor.density.plot",c(list(obj=quote(x)),plot.args.def))
+  }
+  
+  
+  
+  if(plot.options[plot.option]=="Cumulative.Importance"){	
+    plot.args.def <- amend.args(list(weight="rsq.total", use.diff=FALSE, prednames=names(x$X)[-1], 
+                                     show.weights=FALSE, show.gf.names=TRUE, sort=TRUE), plot.args)
+    plot.args.def<- amend.args(plot.args.def,list(...))     
+    if(!is.null(par.args)) par(par.args)
+    do.call("combined.cumulative.importance.plot",c(list(obj=quote(x)),plot.args.def)) 
+  }
+  
+  if(plot.options[plot.option]=="Performance"){	
+    plot.args.def <- amend.args(list(horizontal = FALSE, show.names = FALSE, las = 2, cex.axis = 0.7), plot.args)
+    plot.args.def<- amend.args(plot.args.def,list(...))  
+    old.mar<-par()$mar   
+    par.args.def <- amend.args(list(mfrow=c(1,1),mar=old.mar+c(0,2.5,0,0)), par.args)
+    par(par.args.def)    
+    do.call("combined.performance.plot",c(list(obj=quote(x)),plot.args.def))
+    par(mar=old.mar)
+  }         
+  
+  invisible()
+  }
+############################3
+`plot.gradientForest` <-
+  function(x,  plot.type=c("Overall.Importance","Split.Density","Cumulative.Importance","Performance")[1], 
+           par.args=NULL, plot.args=NULL, ...) 
+  {
+    if (!inherits(x,"gradientForest"))
+      stop(paste("'x' must be a gradientForest object"))
+    plot.options <- c("Overall.Importance","Split.Density","Cumulative.Importance","Performance")
+    if (is.na(plot.option <- pmatch(plot.type,plot.options)))
+      stop(paste('Unmatched plot.type "',plot.type,'". Expecting one of "Overall.Importance", "Split.Density", "Cumulative.Importance" or "Performance"',sep=""))
+    
+    old.par<-par(no.readonly=TRUE)
+    on.exit(par(old.par))
+    
+    amend.args <- function(default.args, new.args) {
+      # replace those that match
+      for(arg in intersect(names(default.args), names(new.args))) 
+        default.args[[arg]] <- new.args[[arg]]
+      # append those that don't match
+      extra <- new.args[is.na(match(names(new.args),names(default.args)))]
+      c(default.args,extra)
+    }
+    
+    if(plot.options[plot.option]=="Overall.Importance"){	
+      plot.args.def <- amend.args(list(cex.axis = 0.7, cex.names = 0.7, las=1, horiz = TRUE), plot.args)
+      plot.args.def<- amend.args(plot.args.def,list(...))     
+      par.args.def <- amend.args(list(mfrow = c(1, 2), mar = c(4, 6, 2, 1)), par.args)
+      par(par.args.def)    
+      do.call("overall.importance.plot",c(list(obj=quote(x)),plot.args.def))
+    }
+    
+    if(plot.options[plot.option]=="Split.Density"){      
+      plot.args.def <- amend.args(list(leg.posn="topright",bin=F, nbin=101, leg.panel=1, barwidth=1, cex.legend=0.8, line.ylab=1.5), plot.args)
+      plot.args.def<- amend.args(plot.args.def,list(...))     
+      par.args.def <- amend.args(list(mar =c(4.5, 1.5, 0.5, 4.5), omi = c(0.1, 0.25, 0.1, 0.1)), par.args)
+      par(par.args.def)    
+      do.call("Split.density.plot.method2",c(list(obj=quote(x)),plot.args.def))
+    }
+    
+    if(plot.options[plot.option]=="Cumulative.Importance") {
+      plot.args.def <- amend.args(list(leg.posn="topleft",legend=TRUE, common.scale=F, line.ylab=1.0, cex.legend=0.75, show.species=TRUE, show.overall=TRUE, leg.nspecies=10), plot.args)
+      plot.args.def<- amend.args(plot.args.def,list(...))     
+      par.args.def <- amend.args(list(mar=c(0.0,2.1,1.1,0), omi=c(0.75, 0.75, 0.1, 0.1)), par.args)
+      par(par.args.def)    
+      do.call("species.cumulative.plot",c(list(obj=quote(x)),plot.args.def))
+    }
+    
+    if(plot.options[plot.option]=="Performance")  {                               
+      plot.args.def <- amend.args(list(horizontal = FALSE, show.names = FALSE, las=2, cex.axis = 0.7,cex.labels=0.7,line=2), plot.args)
+      plot.args.def<- amend.args(plot.args.def,list(...))     
+      par.args.def <- amend.args(list(mfrow=c(1,1)), par.args)
+      par(par.args.def)    
+      do.call("performance.plot",c(list(obj=quote(x)),plot.args.def))   
+    }
+    
+    invisible()	
+    
+  }
+
+########################3
+`predict.combinedGradientForest` <-
+  function (object, newdata, extrap=TRUE, ...)
+  {
+    if (!inherits(object,"combinedGradientForest"))
+      stop(paste("'object' must be a combinedGradientForest object"))
+    linfun <- function(xold,yold,xnew)
+      yold[1] + (xnew-xold[1])*diff(yold)/diff(xold)
+    if (missing(newdata))
+      newdata <- object$X[,-1]
+    if(!inherits(newdata,"data.frame"))
+      stop("newdata must be a data.frame")
+    newnames <- names(newdata)
+    if(!all(ok <- newnames %in% names(object$X)[-1])) {
+      badnames <- paste(newnames[!ok], collapse=", ")
+      stop(paste("the following predictors are not in the gradientForest:\n\t",badnames,sep=""))
+    }
+    for (varX in newnames) {
+      ci <- cumimp(object, varX, ...)
+      xold <- range(ci$x)
+      yold <- range(ci$y)
+      xnew <- range(newdata[,varX],na.rm=T)
+      if (extrap)
+        ynew <- linfun(xold, yold, xnew)
+      else 
+        ynew <- yold
+      if (xnew[1] < xold[1]) {
+        ci$x <- c(xnew[1],ci$x)
+        ci$y <- c(ynew[1],ci$y)
+      }
+      if (xnew[2] > xold[2]) {
+        ci$x <- c(ci$x,xnew[2])
+        ci$y <- c(ci$y,ynew[2])
+      }
+      f <- approxfun(ci, rule = 2)  
+      newdata[,varX] <- f(newdata[,varX])     
+    }
+    class(newdata) <- c("predict.gradientForest", "data.frame")
+    newdata
+  }
+#####################
+`predict.gradientForest` <-
+  function (object, newdata, extrap=TRUE, ...)
+  {
+    if (!inherits(object,"gradientForest"))
+      stop(paste("'object' must be a gradientForest object"))
+    linfun <- function(xold,yold,xnew)
+      yold[1] + (xnew-xold[1])*diff(yold)/diff(xold)
+    if (missing(newdata))
+      newdata <- object$X
+    if(!inherits(newdata,"data.frame"))
+      stop("newdata must be a data.frame")
+    newnames <- names(newdata)
+    if(!all(ok <- newnames %in% names(object$X))) {
+      badnames <- paste(newnames[!ok], collapse=", ")
+      stop(paste("the following predictors are not in the gradientForest:\n\t",badnames,sep=""))
+    }
+    for (varX in newnames) {
+      ci <- cumimp(object, varX, ...)
+      xold <- range(ci$x)
+      yold <- range(ci$y)
+      xnew <- range(newdata[,varX],na.rm=T)
+      if (extrap)
+        ynew <- linfun(xold, yold, xnew)
+      else 
+        ynew <- yold
+      if (xnew[1] < xold[1]) {
+        ci$x <- c(xnew[1],ci$x)
+        ci$y <- c(ynew[1],ci$y)
+      }
+      if (xnew[2] > xold[2]) {
+        ci$x <- c(ci$x,xnew[2])
+        ci$y <- c(ci$y,ynew[2])
+      }
+      f <- approxfun(ci, rule = 2)  
+      newdata[,varX] <- f(newdata[,varX])     
+    }
+    class(newdata) <- c("predict.gradientForest", "data.frame")
+    newdata
+  }
+####################
+predictor.density.plot <-
+  function (obj, ...)
+  {
+    bind.varXY <- function(obj) {do.call("rbind", lapply(names(obj), function(predictor) data.frame(predictor=predictor,value=obj[[predictor]]$x,density=obj[[predictor]]$y))) }
+    dens <- do.call("rbind", lapply(names(obj$dens), function(gear) cbind(gf.name=gear,bind.varXY(obj$dens[[gear]]))))
+    o <- order(-importance(obj))
+    dens$predictor <- ordered(dens$predictor, levels=names(sort(-importance(obj))))
+    spl <- trellis.par.get("superpose.line")
+    n <- length(levels(dens$gf.name))
+    spl$lwd[1] <- 2
+    trellis.par.set("superpose.line",spl)
+    print(xyplot(
+      density~value|predictor,
+      data=dens,
+      groups=gf.name,
+      type='l',
+      scales=list(relation="free",cex=0.5),
+      par.strip.text=list(cex=0.5),
+      ylab="Density",
+      xlab="Predictor value",
+      as.table=T,
+      key=list(
+        space="top",
+        columns=3,
+        text=list(levels(dens$gf.name)),
+        lines=list(type='l',col=spl$col[1:n],
+                   lwd=spl$lwd[1:n])
+      )
+    ))
+  }
+#####################
+predictor.ranges.plot <-
+  function (obj, ...)
+  {
+    o <- order(-importance(obj))
+    X_r <- cbind(obj$X[,1], stack(obj$X[-1]))
+    names(X_r) <- c("gf.name","value","predictor")
+    X_r$predictor <- ordered(X_r$predictor, levels=names(sort(-importance(obj))))
+    print(bwplot(gf.name ~ value|predictor, X_r, scales=list(x=list(relation="free",cex=0.5)),
+                 par.strip.text=list(cex=0.6),xlab="Predictor value", as.table=T, ...))
+  }
+########################
+`print.combinedGradientForest` <-
+  function(x,...)
+  {
+    cat("\nCall:\n")
+    cat(paste(deparse(x$call), sep = "\n", collapse = "\n"), "\n", sep = " ")
+    cat("\ngradientForest objects:\n")
+    cat(paste(levels(x$X[,1]), sep = " "), "\n", sep = " ")
+    cat("\nNumber of Species:\n")
+    print(x$nspec)
+    cat("\nPredictors:\n")
+    cat(paste(names(x$X)[-1], sep = " "), "\n", sep = ", ", fill=T)
+    invisible(x)
+  }
+
+##########################
+
+```
+
+
+?PC##PCA plot function
+```{r}
+PCbiplot <- function(PC, x="PC1", y="PC2") {
+    # PC being a prcomp object
+    data <- data.frame(obsnames=row.names(PC$x), PC$x)
+    plot <- ggplot(data, aes_string(x=x, y=y)) + geom_text(alpha=.4, size=3, aes(label=obsnames))
+    plot <- plot + geom_hline(aes(0), size=.2) + geom_vline(aes(0), size=.2)
+    datapc <- data.frame(varnames=rownames(PC$rotation), PC$rotation)
+    mult <- min(
+        (max(data[,y]) - min(data[,y])/(max(datapc[,y])-min(datapc[,y]))),
+        (max(data[,x]) - min(data[,x])/(max(datapc[,x])-min(datapc[,x])))
+        )
+    datapc <- transform(datapc,
+            v1 = .7 * mult * (get(x)),
+            v2 = .7 * mult * (get(y))
+            )
+    plot <- plot + coord_equal() + geom_text(data=datapc, aes(x=v1, y=v2, label=varnames), size = 5, vjust=1, color="red")
+    plot <- plot + geom_segment(data=datapc, aes(x=0, y=0, xend=v1, yend=v2), arrow=arrow(length=unit(0.2,"cm")), alpha=0.75, color="red")
+    plot
+}
+```
+
+## GF data
+```{r}
+## set up data for both WSS/ESS long/short
+
+path <- file.path("C:/Users/tamj/Documents/JCT work/SS Ecosystem Report/SS-Ecosystem-Report/Thresholds/data")
+
+# import enviro trends
+enviro.inds <- read.csv(paste(path, "/enviro_trends.csv", sep = ""), stringsAsFactors = FALSE)      # standardized
+
+# import disaggregated enviro trends
+
+env.inds.d<-read.csv(paste(path, "/SS_environmental_indicators.csv", sep= ""), stringsAsFactors = FALSE)
+
+# import indicators (ecological + fishing)
+inds <- read.csv(paste(path, "/eco_indicators_esswss.csv", sep = ""), stringsAsFactors = FALSE)
+
+# responses (from final set in Tech Report)
+# need to add BIOMASS_INVERTEBRATES and BIOMASS_TL2 for short period
+
+
+long.response.names<-c(
+                    "Heips_ALL",
+                    "LargeFishIndicator",
+                    "BIOMASS_PISCIVORE",
+                    "BIOMASS_ZOOPISCIVORE",
+                    "MeanLengthABUNDANCE" ,
+                    "MeanTLCommunity" ,
+                    "CCondition_FINFISH",
+                    "CCondition_MBENTHIVORE",
+                    "CCondition_PISCIVORE",
+                    "CCondition_ZOOPISCIVORE",
+                    "CCondition_LBENTHIVORE",
+                    "MeanLifespan" ,
+                    "IVILandings",
+                    "CVBiomass" ,
+                    "BIOMASS_ALL",
+                    "BIOMASS_GADOIDS" ,
+                    "BIOMASS_FLATFISH",
+                    "BIOMASS_SKATES")
+
+short.response.names <- c(
+                    "Heips_ALL",
+                    "LargeFishIndicator",
+                    "BIOMASS_PISCIVORE",
+                    "BIOMASS_ZOOPISCIVORE",
+                    "MeanLengthABUNDANCE" ,
+                    "MeanTLCommunity" ,
+                    "CCondition_FINFISH",
+                    "CCondition_MBENTHIVORE",
+                    "CCondition_PISCIVORE",
+                    "CCondition_ZOOPISCIVORE",
+                    "CCondition_LBENTHIVORE",
+                    "MeanLifespan" ,
+                    "IVILandings",
+                    "CVBiomass" ,
+                    "BIOMASS_ALL",
+                    "BIOMASS_GADOIDS" ,
+                    "BIOMASS_FLATFISH",
+                    "BIOMASS_SKATES", 
+                    "BIOMASS_INVERTEBRATES", 
+                    "INVERTEBRATES_GROUNDFISH", 
+                    "BIOMASS_TL2")
+
+short.responses <- inds[, c("YEAR", "ID", short.response.names)]
+long.responses<-inds[, c("YEAR", "ID", long.response.names)]
+
+# Pressures (from final set in Tech Report)
+FP <- c("FP_ALL",
+        "FP_CLUPEIDS",
+        "MeanTL.Landings",
+        "MTI.Landings_3.25",
+        "DiversityTargetSpp_ALL",
+        "landings_ALL",
+        "landings_SKATES.L",
+        "landings_FLATFISH.L",
+        "landings_LARGE_PELAGIC.L",
+        "FP_INVERTEBRATES")
+
+FP.inds <- inds[, c("YEAR", "ID", FP)]
+
+#change Diversity to number 
+FP.inds$DiversityTargetSpp_ALL<-as.numeric(FP.inds$DiversityTargetSpp_ALL)
+
+# merge fishing and environmental pressures and re-order and re-name for clarity
+environ.inds<-full_join(enviro.inds, env.inds.d, by=c("ID", "YEAR"), copy=FALSE)
+
+pressures <- full_join(environ.inds, FP.inds, by = c("ID", "YEAR")) 
+long.pressures<- dplyr::select(pressures, "YEAR", "ID",
+                           "MAFA1", "MAFA2", 
+                           "Diversity_Target_Spp" = "DiversityTargetSpp_ALL",
+                           "MeanTL_Landings" = "MeanTL.Landings",
+                           "MTI" = "MTI.Landings_3.25",
+                           "Fishing_Pressure" = "FP_ALL",
+                           "FP_Clupeids" = "FP_CLUPEIDS",
+                           "Skates_Landings" = "landings_SKATES.L",
+                           "Flatfish_Landings" = "landings_FLATFISH.L",
+                           "Large_Pelagic_Landings" = "landings_LARGE_PELAGIC.L" ,
+                           "Total_Landings" = "landings_ALL",
+                          
+                           "Air_Temperature","AMO", "CIL_Volume", "Ice_Volume",
+                           "NAO_Winter", "Salinity", "Stratification", "Bottom_Temp")
+
+
+
+short.pressures <- dplyr::select(pressures, "YEAR", "ID",
+                           "MAFA1", "MAFA2",
+                           "DFA1", "DFA2", "DFA3",
+                           "Diversity_Target_Spp" = "DiversityTargetSpp_ALL",
+                           "MeanTL_Landings" = "MeanTL.Landings",
+                           "MTI" = "MTI.Landings_3.25",
+                           "Fishing_Pressure" = "FP_ALL",
+                           "FP_Clupeids" = "FP_CLUPEIDS",
+                           "Skates_Landings" = "landings_SKATES.L",
+                           "Flatfish_Landings" = "landings_FLATFISH.L",
+                           "Large_Pelagic_Landings" = "landings_LARGE_PELAGIC.L" ,
+                           "Total_Landings" = "landings_ALL",
+                           "Air_Temperature","AMO", "CIL_Volume", "Ice_Volume",
+                           "NAO_Winter", "Salinity", "Stratification", "Bottom_Temp",
+                           "Nitrate_0_50", 
+                           "Chlorophyll_100m", 
+                           "C_finmarchicus", 
+                           "Non_copepods", 
+                           "Zooplankton_Biomass", 
+                           "Diatoms", 
+                           "Flagellates", 
+                           "Euphausiacea", 
+                           "Arctic_Calanus", 
+                           "Bloom_Start",
+                           "Bloom_Duration", 
+                           "Bloom_Magnitude")
+
+
+long.pressure.names <- names(long.pressures)[3:length(names(long.pressures))]
+short.pressure.names <- names(short.pressures)[3:length(names(short.pressures))]
+
+```
+
+## SS GF
+### ESS.long GF
+```{r}
+ess.long.responses<-long.responses %>% 
+  dplyr::filter(ID=="ESS") %>%
+  dplyr::select(-YEAR, -ID)
+
+ess.long.pressures<-long.pressures %>% 
+    dplyr::slice(-98) %>%
+  dplyr::filter(ID=="ESS") %>%
+  dplyr::select(-YEAR, -ID) 
+
+ess.long.year<-long.pressures %>%
+   dplyr::slice(-98) %>%
+  dplyr::filter(ID=="ESS") %>%
+  dplyr::select(YEAR) 
+
+ESSbio<-ess.long.responses
+ESSenv<-ess.long.pressures
+#Set up data (use region specific env and bio dataframes)
+dat<-cbind(ESSenv,ESSbio)
+
+ind.name<-colnames(ESSbio)
+dri.name<-colnames(ESSenv)
+
+# Many of the pressure variables do not have full data (some NA):
+## Option 1- Impute:
+# dat <- na.roughfix(dat)
+
+# Maximum level of splits
+lev <- floor(log2(nrow(dat) * 0.368/2))
+#colnames(dat)[!colnames(dat) %in% c(dri.name, ind.name)]\
+#dat<-data.frame(dat)
+#
+## GF analysis ##
+ESSgfa <-   gradientForest(data = dat, 
+                           predictor.vars = dri.name, 
+                           response.vars = ind.name,
+                           ntree = 1500, 
+                           transform = NULL,
+                           maxLevel = lev,
+                           corr.threshold = 0.5, 
+                           compact = F,
+                           trace = T)
+
+#save Rdata
+
+save(ESSgfa, file = "ESS.long.gfa.v03_coli.RDATA")
+
+
+#
+##########################
+# Model Importance Table #
+##########################
+#
+# Cumulative importance
+var.order <- names(importance(ESSgfa, type = "Weighted", sort = TRUE))
+#
+indicatorIMP <- ESSgfa$imp.rsq
+indicatorNA <- colnames(indicatorIMP)[apply(indicatorIMP, 2, function(x)all(is.na(x)))]
+indicatorIMP <- indicatorIMP[apply(indicatorIMP, 2, function(x)!all(is.na(x))),]
+#
+indicatorDF <- data.frame("VARIABLE" = colnames(indicatorIMP),
+                          "TYPE" = "INDICATOR", melt(apply(indicatorIMP, 2, mean, na.rm = T),
+                                                     variable.name = "VARIABLE",
+                                                     value.name = "MEAN"),
+                          melt(apply(indicatorIMP, 2, min, na.rm = T),
+                               variable.name = "VARIABLE", 
+                               value.name = "MIN"),
+                          melt(apply(indicatorIMP, 2, max, na.rm = T),
+                               variable.name = "VARIABLE", 
+                               value.name = "MAX"))
+#
+pressureIMP <- ESSgfa$imp.rsq
+pressureNA <- row.names(pressureIMP)[apply(pressureIMP, 1, function(x)all(is.na(x)))]
+pressureIMP <- pressureIMP[apply(pressureIMP, 1, function(x)!all(is.na(x))),]
+pressureDF <- data.frame("VARIABLE" = row.names(pressureIMP),
+                         "TYPE" = "PRESSURE", melt(apply(pressureIMP, 1, mean, na.rm = T),
+                                                   variable.name = "VARIABLE",
+                                                   value.name = "MEAN"),
+                         melt(apply(pressureIMP, 1, min, na.rm = T),
+                              variable.name = "VARIABLE", 
+                              value.name = "MIN"),
+                         melt(apply(pressureIMP, 1, max, na.rm = T),
+                              variable.name = "VARIABLE", 
+                              value.name = "MAX"))
+#
+indicatorDF[,c(3:5)] <- apply(indicatorDF[,c(3:5)], 2, signif, 2)
+pressureDF[,c(3:5)] <- apply(pressureDF[,c(3:5)], 2, signif, 2)
+# indicatorDF$VARIABLE <- factor(indicatorDF$VARIABLE, labels = c(ENTER APPROPRIATE NAMES HERE))
+# pressureDF$VARIABLE <- factor(pressureDF$VARIABLE, labels = c(ENTER APPROPRIATE NAMES HERE))
+
+#pressureDF <- rbind(pressureDF, cbind(VARIABLE = pressureNA,TYPE = "PRESSURE", MEAN = "NA", MIN = "NA", MAX = "NA"))
+#
+modPerformance <- rbind(pressureDF, indicatorDF)
+##
+write.csv(modPerformance, file = "ESS_long_gfModelPerformance_v03_coli.csv")
+#         
+#########
+# PLOTS #
+#########
+#
+imp.vars <- names(importance(ESSgfa)[importance(ESSgfa) > 0])
+
+#
+# Overall Importance
+png(file = "ESS_long_Importance_v03_.png", width = 83, height = 83, units = "mm", res = 600)
+par(mgp = c(.75, 0.05, 0), 
+    mar = c(2.75, 6.5, 0.1, .5),
+    omi = c(0, 0.3, 0.1, 0),
+    family = "sans", 
+    tck = -0.015)
+impPlot(ESSgfa,
+        cex.main = 0.7)
+mtext(expression(paste(R^2, " weighted importance")), side = 1, line = 1.75, cex = .75)
+dev.off()
+#
+#
+# Split Ratio
+png(file = "ESS_long_splitRatio_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+# tiff(file = paste0(figure.dir, "CCE-splitRatio_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 600)
+par(mgp = c(.75, 0.05, 0), 
+    mar = c(2.25, 1, 0.1, .5),
+    omi = c(0,0.3, 0.1, 0),
+    family = "sans", 
+    tck = -0.015)
+spRatio(ESSgfa,
+        imp.vars = imp.vars,
+        #           imp.vars.names = #c(ADD NAMES HERE),
+        leg.posn = "topright",
+        cex.legend = 0.4, cex.axis = 0.6,
+        cex.lab = 0.7, line.ylab = 0.9)
+dev.off()
+
+# Density of Splits
+png(file = "ESS_long_splitImportance_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+# tiff(file = paste0(figure.dir, "CCE-splitImportance_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 600)
+par(mgp = c(.75, 0.05, 0), 
+    mar = c(2.25, 1, 0.1, .5),
+    omi = c(0,0.3, 0.1, 0),
+    family = "sans", 
+    tck = -0.015)
+spImportance(ESSgfa,
+             imp.vars = imp.vars,
+             #imp.vars.names = c("Coastal_engineering"),
+             leg.posn = "topright", cex.legend = 0.4, cex.axis = 0.6,
+             cex.lab = 0.7, line.ylab = 0.9)
+dev.off()
+#
+# Density of Data
+png(file = "ESS_long_splitData_v03", width = 173.5, height = 173.5, units = "mm", res = 600)
+# tiff(file = paste0(figure.dir, "CCE-splitData_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 600)
+#
+par(mgp = c(.75, 0.05, 0), 
+    mar = c(2.25, 1, 0.1, .5),
+    omi = c(0,0.3, 0.1, 0),
+    family = "sans", 
+    tck = -0.015)
+spData(ESSgfa,
+       imp.vars = imp.vars,
+       #           imp.vars.names = #c(ADD NAMES HERE),
+       leg.posn = "topright", cex.legend = 0.4, cex.axis = 0.6,
+       cex.lab = 0.7, line.ylab = 0.9)
+dev.off()
+#
+# Cumulative Importance (split)
+png(file ="ESS_long_cumImportanceSplit_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+# tiff(file = paste0(figure.dir, "CCE-cumImportanceSplit_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 1000)
+
+par(mgp = c(1.0, 0.1, 0),
+    mar = c(2.25, 1, 0.1, 0.5),
+    omi = c(0,0.3, 0.1, 0),
+    family = "sans", tck = -0.015)
+spCumPlot(ESSgfa, 
+          imp.vars= imp.vars, 
+          #           imp.vars.names = #c(ADD NAMES HERE),
+          show.species = TRUE,
+          legend = TRUE,
+          show.overall = FALSE,
+          common.scale = TRUE,
+          leg.nspecies = 6,
+          #           leg.posn = "topright",
+          cex.lab = 0.9, cex.legend = 1, cex.axis = 0.8, line.ylab = 0.8)
+dev.off()
+#
+# Cumulative Importance (total)
+
+png(file = "ESS_long_cumImportance_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+
+# tiff(file = paste0(figure.dir, "CCE-cumImportance_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 600)
+#
+par(mgp = c(1.0, 0.1, 0),
+    mar = c(2.25, 1, 0.1, 0.5),
+    omi = c(0,0.3, 0.1, 0),
+    family = "sans", tck = -0.015)
+spCumPlot(ESSgfa, 
+          imp.vars = imp.vars, 
+          #           imp.vars.names = #c(ADD NAMES HERE),
+          show.species = FALSE,
+          show.overall = TRUE,
+          common.scale = TRUE,
+          leg.nspecies = 6,
+          cex.lab = 0.9, cex.legend = 0.7, cex.axis = 0.8, line.ylab = 0.8)
+dev.off()
+#
+# Collect PCA info
+Trns_grid <- predict(ESSgfa, dat[, imp.vars])
+row.names(Trns_grid) <- c(ess.long.year$YEAR)
+ESS.long.PCs <- prcomp(Trns_grid[, imp.vars])
+#
+ggsave(file="ESS_long_PCA_v03.png", PCbiplot(WSSPCs),
+       width = 83, height = 83, units = "mm", scale = 2)
+```
+### ESS.short GF
+```{r}
+ess.short.responses<-short.responses %>% 
+  dplyr::filter(ID=="ESS", YEAR>=1999) %>%
+  dplyr::select(-YEAR, -ID)
+
+ess.short.pressures<-short.pressures %>% 
+    dplyr::slice(-98) %>%
+  dplyr::filter(ID=="ESS", YEAR>=1999) %>%
+  dplyr::select(-YEAR, -ID)
+
+
+ess.short.year<-short.pressures %>%
+  dplyr::slice(-98) %>%  
+  dplyr::filter(ID=="ESS", YEAR>=1999) %>%
+  dplyr::select(YEAR)
+
+
+
+ESSbio<-ess.short.responses
+ESSenv<-ess.short.pressures
+#Set up data (use region specific env and bio dataframes)
+dat<-cbind(ESSenv,ESSbio)
+
+ind.name<-colnames(ESSbio)
+dri.name<-colnames(ESSenv)
+
+# Many of the pressure variables do not have full data (some NA):
+## Option 1- Impute:
+# dat <- na.roughfix(dat)
+
+# Maximum level of splits
+lev <- floor(log2(nrow(dat) * 0.368/2))
+#colnames(dat)[!colnames(dat) %in% c(dri.name, ind.name)]\
+#dat<-data.frame(dat)
+#
+## GF analysis ##
+ESS_short_gfa <-   gradientForest(data = dat, 
+                                  predictor.vars = dri.name, 
+                                  response.vars = ind.name,
+                                  ntree = 1500, 
+                                  transform = NULL,
+                                  maxLevel = lev,
+                                  corr.threshold = 0.5, 
+                                  compact = F,
+                                  trace = T)
+
+#save Rdata
+
+save(ESS_short_gfa, file = "ESS.short.gfa.v03_coli.RDATA")
+
+
+#
+##########################
+# Model Importance Table #
+##########################
+#
+# Cumulative importance
+var.order <- names(importance(ESS_short_gfa, type = "Weighted", sort = TRUE))
+#
+indicatorIMP <- ESS_short_gfa$imp.rsq
+indicatorNA <- colnames(indicatorIMP)[apply(indicatorIMP, 2, function(x)all(is.na(x)))]
+indicatorIMP <- indicatorIMP[apply(indicatorIMP, 2, function(x)!all(is.na(x))),]
+#
+indicatorDF <- data.frame("VARIABLE" = colnames(indicatorIMP),
+                          "TYPE" = "INDICATOR", melt(apply(indicatorIMP, 2, mean, na.rm = T),
+                                                     variable.name = "VARIABLE",
+                                                     value.name = "MEAN"),
+                          melt(apply(indicatorIMP, 2, min, na.rm = T),
+                               variable.name = "VARIABLE", 
+                               value.name = "MIN"),
+                          melt(apply(indicatorIMP, 2, max, na.rm = T),
+                               variable.name = "VARIABLE", 
+                               value.name = "MAX"))
+#
+pressureIMP <- ESS_short_gfa$imp.rsq
+pressureNA <- row.names(pressureIMP)[apply(pressureIMP, 1, function(x)all(is.na(x)))]
+pressureIMP <- pressureIMP[apply(pressureIMP, 1, function(x)!all(is.na(x))),]
+pressureDF <- data.frame("VARIABLE" = row.names(pressureIMP),
+                         "TYPE" = "PRESSURE", melt(apply(pressureIMP, 1, mean, na.rm = T),
+                                                   variable.name = "VARIABLE",
+                                                   value.name = "MEAN"),
+                         melt(apply(pressureIMP, 1, min, na.rm = T),
+                              variable.name = "VARIABLE", 
+                              value.name = "MIN"),
+                         melt(apply(pressureIMP, 1, max, na.rm = T),
+                              variable.name = "VARIABLE", 
+                              value.name = "MAX"))
+#
+indicatorDF[,c(3:5)] <- apply(indicatorDF[,c(3:5)], 2, signif, 2)
+pressureDF[,c(3:5)] <- apply(pressureDF[,c(3:5)], 2, signif, 2)
+# indicatorDF$VARIABLE <- factor(indicatorDF$VARIABLE, labels = c(ENTER APPROPRIATE NAMES HERE))
+# pressureDF$VARIABLE <- factor(pressureDF$VARIABLE, labels = c(ENTER APPROPRIATE NAMES HERE))
+
+#pressureDF <- rbind(pressureDF, cbind(VARIABLE = pressureNA,TYPE = "PRESSURE", MEAN = "NA", MIN = "NA", MAX = "NA"))
+#
+modPerformance <- rbind(pressureDF, indicatorDF)
+##
+write.csv(modPerformance, file = "ESS_short_gfModelPerformance_v03_coli.csv")
+#         
+#########
+# PLOTS #
+#########
+#
+imp.vars <- names(importance(ESS_short_gfa)[importance(ESS_short_gfa) > 0])
+
+#
+# Overall Importance
+png(file = "ESS_short_Importance_v03.png", width = 83, height = 200, units = "mm", res = 600)
+par(mgp = c(.75, 0.05, 0), 
+    mar = c(2.75, 6.5, 0.1, .5),
+    omi = c(0, 0.3, 0.1, 0),
+    family = "sans", 
+    tck = -0.015)
+impPlot(ESS_short_gfa,
+        cex.main = 0.2)
+mtext(expression(paste(R^2, " weighted importance")), side = 1, line = 1.75)
+dev.off()
+#
+#
+# Split Ratio
+png(file = "ESS_short_splitRatio_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+# tiff(file = paste0(figure.dir, "CCE-splitRatio_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 600)
+par(mgp = c(.75, 0.05, 0), 
+    mar = c(2.25, 1, 0.1, .5),
+    omi = c(0,0.3, 0.1, 0),
+    family = "sans", 
+    tck = -0.015)
+spRatio(ESS_short_gfa,
+        imp.vars = imp.vars,
+        #           imp.vars.names = #c(ADD NAMES HERE),
+        leg.posn = "topright",
+        cex.legend = 0.4, cex.axis = 0.6,
+        cex.lab = 0.7, line.ylab = 0.9)
+dev.off()
+
+# Density of Splits
+png(file = "ESS_short_splitImportance_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+# tiff(file = paste0(figure.dir, "CCE-splitImportance_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 600)
+par(mgp = c(.75, 0.05, 0), 
+    mar = c(2.25, 1, 0.1, .5),
+    omi = c(0,0.3, 0.1, 0),
+    family = "sans", 
+    tck = -0.015)
+spImportance(ESS_short_gfa,
+             imp.vars = imp.vars,
+             #imp.vars.names = c("Coastal_engineering"),
+             leg.posn = "topright", cex.legend = 0.4, cex.axis = 0.6,
+             cex.lab = 0.7, line.ylab = 0.9)
+dev.off()
+#
+# Density of Data
+png(file = "ESS_short_splitData_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+# tiff(file = paste0(figure.dir, "CCE-splitData_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 600)
+#
+par(mgp = c(.75, 0.05, 0), 
+    mar = c(2.25, 1, 0.1, .5),
+    omi = c(0,0.3, 0.1, 0),
+    family = "sans", 
+    tck = -0.015)
+spData(ESS_short_gfa,
+       imp.vars = imp.vars,
+       #           imp.vars.names = #c(ADD NAMES HERE),
+       leg.posn = "topright", cex.legend = 0.4, cex.axis = 0.6,
+       cex.lab = 0.7, line.ylab = 0.9)
+dev.off()
+#
+# Cumulative Importance (split)
+png(file ="ESS_short_cumImportanceSplit_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+# tiff(file = paste0(figure.dir, "CCE-cumImportanceSplit_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 1000)
+
+par(mgp = c(1.0, 0.1, 0),
+    mar = c(2.25, 1, 0.1, 0.5),
+    omi = c(0,0.3, 0.1, 0),
+    family = "sans", tck = -0.015)
+spCumPlot(ESS_short_gfa, 
+          imp.vars= imp.vars, 
+          #           imp.vars.names = #c(ADD NAMES HERE),
+          show.species = TRUE,
+          legend = TRUE,
+          show.overall = FALSE,
+          common.scale = TRUE,
+          leg.nspecies = 6,
+          #           leg.posn = "topright",
+          cex.lab = 0.9, cex.legend = 1, cex.axis = 0.8, line.ylab = 0.8)
+dev.off()
+#
+# Cumulative Importance (total)
+
+png(file = "ESS_short_cumImportance_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+
+# tiff(file = paste0(figure.dir, "CCE-cumImportance_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 600)
+#
+par(mgp = c(1.0, 0.1, 0),
+    mar = c(2.25, 1, 0.1, 0.5),
+    omi = c(0,0.3, 0.1, 0),
+    family = "sans", tck = -0.015)
+spCumPlot(ESS_short_gfa, 
+          imp.vars = imp.vars, 
+          #           imp.vars.names = #c(ADD NAMES HERE),
+          show.species = FALSE,
+          show.overall = TRUE,
+          common.scale = TRUE,
+          leg.nspecies = 6,
+          cex.lab = 0.9, cex.legend = 0.7, cex.axis = 0.8, line.ylab = 0.8)
+dev.off()
+#
+# Collect PCA info
+Trns_grid <- predict(ESS_short_gfa, dat[, imp.vars])
+row.names(Trns_grid) <- c(ess.short.year$YEAR)
+ESS_short_PCs <- prcomp(Trns_grid[, imp.vars])
+#
+ggsave(file="ESS_short_PCA_v03.png", PCbiplot(ESS_short_PCs),
+       width = 83, height = 83, units = "mm", scale = 2)
+###########
+```
+### WSS.long GF
+```{r}
+wss.long.responses<-long.responses %>% 
+  dplyr::filter(ID=="WSS") %>%
+  dplyr::select(-YEAR, -ID)%>%
+  as_tibble()
+
+wss.long.pressures<-long.pressures %>% 
+  dplyr::filter(ID=="WSS") %>%
+  dplyr::select(-YEAR, -ID) %>%
+  as_tibble()
+
+wss.long.year<-long.pressures %>%
+  dplyr::filter(ID=="WSS") %>%
+  dplyr::select(YEAR)
+
+WSSbio<-wss.long.responses
+WSSenv<-wss.long.pressures
+#Set up data (use region specific env and bio dataframes)
+dat<-cbind(WSSenv,WSSbio)
+
+ind.name<-colnames(WSSbio)
+dri.name<-colnames(WSSenv)
+
+# Many of the pressure variables do not have full data (some NA):
+## Option 1- Impute:
+# dat <- na.roughfix(dat)
+
+# Maximum level of splits
+lev <- floor(log2(nrow(dat) * 0.368/2))
+#colnames(dat)[!colnames(dat) %in% c(dri.name, ind.name)]\
+#dat<-data.frame(dat)
+#
+## GF analysis ##
+WSSgfa <-   gradientForest(data = dat, 
+                            predictor.vars = dri.name, 
+                            response.vars = ind.name,
+                            ntree = 1500, 
+                            transform = NULL,
+                            maxLevel = lev,
+                            corr.threshold = 0.5, 
+                            compact = F,
+                            trace = T)
+
+#save Rdata
+
+save(WSSgfa, file = "wss.long.gfa_v03.RDATA")
+
+
+#
+##########################
+# Model Importance Table #
+##########################
+#
+# Cumulative importance
+var.order <- names(importance(WSSgfa, type = "Weighted", sort = TRUE))
+#
+indicatorIMP <- WSSgfa$imp.rsq
+indicatorNA <- colnames(indicatorIMP)[apply(indicatorIMP, 2, function(x)all(is.na(x)))]
+indicatorIMP <- indicatorIMP[apply(indicatorIMP, 2, function(x)!all(is.na(x))),]
+#
+indicatorDF <- data.frame("VARIABLE" = colnames(indicatorIMP),
+                          "TYPE" = "INDICATOR", melt(apply(indicatorIMP, 2, mean, na.rm = T),
+                                                     variable.name = "VARIABLE",
+                                                     value.name = "MEAN"),
+                          melt(apply(indicatorIMP, 2, min, na.rm = T),
+                               variable.name = "VARIABLE", 
+                               value.name = "MIN"),
+                          melt(apply(indicatorIMP, 2, max, na.rm = T),
+                               variable.name = "VARIABLE", 
+                               value.name = "MAX"))
+#
+pressureIMP <- WSSgfa$imp.rsq
+pressureNA <- row.names(pressureIMP)[apply(pressureIMP, 1, function(x)all(is.na(x)))]
+pressureIMP <- pressureIMP[apply(pressureIMP, 1, function(x)!all(is.na(x))),]
+pressureDF <- data.frame("VARIABLE" = row.names(pressureIMP),
+                         "TYPE" = "PRESSURE", melt(apply(pressureIMP, 1, mean, na.rm = T),
+                                                   variable.name = "VARIABLE",
+                                                   value.name = "MEAN"),
+                         melt(apply(pressureIMP, 1, min, na.rm = T),
+                              variable.name = "VARIABLE", 
+                              value.name = "MIN"),
+                         melt(apply(pressureIMP, 1, max, na.rm = T),
+                              variable.name = "VARIABLE", 
+                              value.name = "MAX"))
+#
+indicatorDF[,c(3:5)] <- apply(indicatorDF[,c(3:5)], 2, signif, 2)
+pressureDF[,c(3:5)] <- apply(pressureDF[,c(3:5)], 2, signif, 2)
+# indicatorDF$VARIABLE <- factor(indicatorDF$VARIABLE, labels = c(ENTER APPROPRIATE NAMES HERE))
+# pressureDF$VARIABLE <- factor(pressureDF$VARIABLE, labels = c(ENTER APPROPRIATE NAMES HERE))
+
+#pressureDF <- rbind(pressureDF, cbind(VARIABLE = pressureNA,TYPE = "PRESSURE", MEAN = "NA", MIN = "NA", MAX = "NA"))
+#
+modPerformance <- rbind(pressureDF, indicatorDF)
+##
+write.csv(modPerformance, file = "WSS_long_gfModelPerformance_v03.csv")
+#         
+#########
+# PLOTS #
+#########
+#
+imp.vars <- names(importance(WSSgfa)[importance(WSSgfa) > 0])
+
+#
+# Overall Importance
+png(file = "WSS_long_Importance_v03.png", width = 83, height = 83, units = "mm", res = 600)
+par(mgp = c(.75, 0.05, 0), 
+    mar = c(2.75, 6.5, 0.1, .5),
+    omi = c(0, 0.3, 0.1, 0),
+    family = "sans", 
+    tck = -0.015)
+impPlot(WSSgfa,
+        cex.main = 0.7)
+mtext(expression(paste(R^2, " weighted importance")), side = 1, line = 1.75, cex = .75)
+dev.off()
+#
+#
+# Split Ratio
+png(file = "WSS_long_splitRatio_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+# tiff(file = paste0(figure.dir, "CCE-splitRatio_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 600)
+par(mgp = c(.75, 0.05, 0), 
+    mar = c(2.25, 1, 0.1, .5),
+    omi = c(0,0.3, 0.1, 0),
+    family = "sans", 
+    tck = -0.015)
+spRatio(WSSgfa,
+        imp.vars = imp.vars,
+        #           imp.vars.names = #c(ADD NAMES HERE),
+        leg.posn = "topright",
+        cex.legend = 0.4, cex.axis = 0.6,
+        cex.lab = 0.7, line.ylab = 0.9)
+dev.off()
+
+# Density of Splits
+png(file = "WSS_long_splitImportance_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+# tiff(file = paste0(figure.dir, "CCE-splitImportance_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 600)
+par(mgp = c(.75, 0.05, 0), 
+    mar = c(2.25, 1, 0.1, .5),
+    omi = c(0,0.3, 0.1, 0),
+    family = "sans", 
+    tck = -0.015)
+spImportance(WSSgfa,
+             imp.vars = imp.vars,
+             #imp.vars.names = c("Coastal_engineering"),
+             leg.posn = "topright", cex.legend = 0.4, cex.axis = 0.6,
+             cex.lab = 0.7, line.ylab = 0.9)
+dev.off()
+#
+# Density of Data
+png(file = "WSS_long_splitData_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+# tiff(file = paste0(figure.dir, "CCE-splitData_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 600)
+#
+par(mgp = c(.75, 0.05, 0), 
+    mar = c(2.25, 1, 0.1, .5),
+    omi = c(0,0.3, 0.1, 0),
+    family = "sans", 
+    tck = -0.015)
+spData(WSSgfa,
+       imp.vars = imp.vars,
+       #           imp.vars.names = #c(ADD NAMES HERE),
+       leg.posn = "topright", cex.legend = 0.4, cex.axis = 0.6,
+       cex.lab = 0.7, line.ylab = 0.9)
+dev.off()
+#
+# Cumulative Importance (split)
+png(file ="WSS_long_cumImportanceSplit_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+# tiff(file = paste0(figure.dir, "CCE-cumImportanceSplit_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 1000)
+
+par(mgp = c(1.0, 0.1, 0),
+    mar = c(2.25, 1, 0.1, 0.5),
+    omi = c(0,0.3, 0.1, 0),
+    family = "sans", tck = -0.015)
+spCumPlot(WSSgfa, 
+          imp.vars= imp.vars, 
+          #           imp.vars.names = #c(ADD NAMES HERE),
+          show.species = TRUE,
+          legend = TRUE,
+          show.overall = FALSE,
+          common.scale = TRUE,
+          leg.nspecies = 6,
+          #           leg.posn = "topright",
+          cex.lab = 0.9, cex.legend = 1, cex.axis = 0.8, line.ylab = 0.8)
+dev.off()
+#
+# Cumulative Importance (total)
+
+png(file = "WSS_long_cumImportance_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+
+# tiff(file = paste0(figure.dir, "CCE-cumImportance_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 600)
+#
+par(mgp = c(1.0, 0.1, 0),
+    mar = c(2.25, 1, 0.1, 0.5),
+    omi = c(0,0.3, 0.1, 0),
+    family = "sans", tck = -0.015)
+spCumPlot(WSSgfa, 
+          imp.vars = imp.vars, 
+          #           imp.vars.names = #c(ADD NAMES HERE),
+          show.species = FALSE,
+          show.overall = TRUE,
+          common.scale = TRUE,
+          leg.nspecies = 6,
+          cex.lab = 0.9, cex.legend = 0.7, cex.axis = 0.8, line.ylab = 0.8)
+dev.off()
+#
+# Collect PCA info
+Trns_grid <- predict(WSSgfa, dat[, imp.vars])
+row.names(Trns_grid) <- c(wss.long.year$YEAR)
+WSS.long.PCs <- prcomp(Trns_grid[, imp.vars])
+#
+ggsave(file="WSS_long_PCA_v03.png", PCbiplot(WSS.long.PCs),
+       width = 83, height = 83, units = "mm", scale = 2)
+```
+### WSS.short GF
+```{r}
+wss.short.responses<-short.responses %>% 
+  dplyr::filter(ID=="WSS", YEAR >=1999) %>%
+  dplyr::select(-YEAR, -ID)%>%
+  as_tibble()
+
+wss.short.pressures<-short.pressures %>%
+  dplyr::filter(ID=="WSS", YEAR >=1999) %>%
+  dplyr::select(-YEAR, -ID) %>%
+  as_tibble()
+
+
+wss.short.year<-short.pressures %>%
+  dplyr::filter(ID=="WSS", YEAR>=1999) %>%
+  dplyr::select(YEAR)
+
+WSSbio<-wss.short.responses
+WSSenv<-wss.short.pressures
+#Set up data (use region specific env and bio dataframes)
+dat<-cbind(WSSenv,WSSbio)
+
+ind.name<-colnames(WSSbio)
+dri.name<-colnames(WSSenv)
+
+# Many of the pressure variables do not have full data (some NA):
+## Option 1- Impute:
+# dat <- na.roughfix(dat)
+
+# Maximum level of splits
+lev <- floor(log2(nrow(dat) * 0.368/2))
+#colnames(dat)[!colnames(dat) %in% c(dri.name, ind.name)]\
+#dat<-data.frame(dat)
+#
+## GF analysis ##
+WSS_short_gfa <-   gradientForest(data = dat, 
+                           predictor.vars = dri.name, 
+                           response.vars = ind.name,
+                           ntree = 1500, 
+                           transform = NULL,
+                           maxLevel = lev,
+                           corr.threshold = 0.5, 
+                           compact = F,
+                           trace = T)
+
+#save Rdata
+
+save(WSS_short_gfa, file = "wss.short.gfa.v03_coli.RDATA")
+
+
+#
+##########################
+# Model Importance Table #
+##########################
+#
+# Cumulative importance
+var.order <- names(importance(WSS_short_gfa, type = "Weighted", sort = TRUE))
+#
+indicatorIMP <- WSS_short_gfa$imp.rsq
+indicatorNA <- colnames(indicatorIMP)[apply(indicatorIMP, 2, function(x)all(is.na(x)))]
+indicatorIMP <- indicatorIMP[apply(indicatorIMP, 2, function(x)!all(is.na(x))),]
+#
+indicatorDF <- data.frame("VARIABLE" = colnames(indicatorIMP),
+                          "TYPE" = "INDICATOR", melt(apply(indicatorIMP, 2, mean, na.rm = T),
+                                                     variable.name = "VARIABLE",
+                                                     value.name = "MEAN"),
+                          melt(apply(indicatorIMP, 2, min, na.rm = T),
+                               variable.name = "VARIABLE", 
+                               value.name = "MIN"),
+                          melt(apply(indicatorIMP, 2, max, na.rm = T),
+                               variable.name = "VARIABLE", 
+                               value.name = "MAX"))
+#
+pressureIMP <- WSS_short_gfa$imp.rsq
+pressureNA <- row.names(pressureIMP)[apply(pressureIMP, 1, function(x)all(is.na(x)))]
+pressureIMP <- pressureIMP[apply(pressureIMP, 1, function(x)!all(is.na(x))),]
+pressureDF <- data.frame("VARIABLE" = row.names(pressureIMP),
+                         "TYPE" = "PRESSURE", melt(apply(pressureIMP, 1, mean, na.rm = T),
+                                                   variable.name = "VARIABLE",
+                                                   value.name = "MEAN"),
+                         melt(apply(pressureIMP, 1, min, na.rm = T),
+                              variable.name = "VARIABLE", 
+                              value.name = "MIN"),
+                         melt(apply(pressureIMP, 1, max, na.rm = T),
+                              variable.name = "VARIABLE", 
+                              value.name = "MAX"))
+#
+indicatorDF[,c(3:5)] <- apply(indicatorDF[,c(3:5)], 2, signif, 2)
+pressureDF[,c(3:5)] <- apply(pressureDF[,c(3:5)], 2, signif, 2)
+# indicatorDF$VARIABLE <- factor(indicatorDF$VARIABLE, labels = c(ENTER APPROPRIATE NAMES HERE))
+# pressureDF$VARIABLE <- factor(pressureDF$VARIABLE, labels = c(ENTER APPROPRIATE NAMES HERE))
+
+#pressureDF <- rbind(pressureDF, cbind(VARIABLE = pressureNA,TYPE = "PRESSURE", MEAN = "NA", MIN = "NA", MAX = "NA"))
+#
+modPerformance <- rbind(pressureDF, indicatorDF)
+##
+write.csv(modPerformance, file = "WSS_short_gfModelPerformance_v03.csv")
+#         
+#########
+# PLOTS #
+#########
+#
+imp.vars <- names(importance(WSS_short_gfa)[importance(WSS_short_gfa) > 0])
+
+#
+# Overall Importance
+png(file = "WSS_short_Importance_v03.png", width = 83, height = 200, units = "mm", res = 600)
+par(mgp = c(.75, 0.05, 0), 
+    mar = c(2.75, 6.5, 0.1, .5),
+    omi = c(0, 0.3, 0.1, 0),
+    family = "sans", 
+    tck = -0.015)
+impPlot(WSS_short_gfa,
+        cex.main = 0.2)
+mtext(expression(paste(R^2, " weighted importance")), side = 1, line = 1.75)
+dev.off()
+#
+#
+# Split Ratio
+png(file = "WSS_short_splitRatio_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+# tiff(file = paste0(figure.dir, "CCE-splitRatio_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 600)
+par(mgp = c(.75, 0.05, 0), 
+    mar = c(2.25, 1, 0.1, .5),
+    omi = c(0,0.3, 0.1, 0),
+    family = "sans", 
+    tck = -0.015)
+spRatio(WSS_short_gfa,
+        imp.vars = imp.vars,
+        #           imp.vars.names = #c(ADD NAMES HERE),
+        leg.posn = "topright",
+        cex.legend = 0.4, cex.axis = 0.6,
+        cex.lab = 0.7, line.ylab = 0.9)
+dev.off()
+
+# Density of Splits
+png(file = "WSS_short_splitImportance_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+# tiff(file = paste0(figure.dir, "CCE-splitImportance_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 600)
+par(mgp = c(.75, 0.05, 0), 
+    mar = c(2.25, 1, 0.1, .5),
+    omi = c(0,0.3, 0.1, 0),
+    family = "sans", 
+    tck = -0.015)
+spImportance(WSS_short_gfa,
+             imp.vars = imp.vars,
+             #imp.vars.names = c("Coastal_engineering"),
+             leg.posn = "topright", cex.legend = 0.4, cex.axis = 0.6,
+             cex.lab = 0.7, line.ylab = 0.9)
+dev.off()
+#
+# Density of Data
+png(file = "WSS_short_splitData_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+# tiff(file = paste0(figure.dir, "CCE-splitData_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 600)
+#
+par(mgp = c(.75, 0.05, 0), 
+    mar = c(2.25, 1, 0.1, .5),
+    omi = c(0,0.3, 0.1, 0),
+    family = "sans", 
+    tck = -0.015)
+spData(WSS_short_gfa,
+       imp.vars = imp.vars,
+       #           imp.vars.names = #c(ADD NAMES HERE),
+       leg.posn = "topright", cex.legend = 0.4, cex.axis = 0.6,
+       cex.lab = 0.7, line.ylab = 0.9)
+dev.off()
+#
+# Cumulative Importance (split)
+png(file ="WSS_short_cumImportanceSplit_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+# tiff(file = paste0(figure.dir, "CCE-cumImportanceSplit_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 1000)
+
+par(mgp = c(1.0, 0.1, 0),
+    mar = c(2.25, 1, 0.1, 0.5),
+    omi = c(0,0.3, 0.1, 0),
+    family = "sans", tck = -0.015)
+spCumPlot(WSS_short_gfa, 
+          imp.vars= imp.vars, 
+          #           imp.vars.names = #c(ADD NAMES HERE),
+          show.species = TRUE,
+          legend = TRUE,
+          show.overall = FALSE,
+          common.scale = TRUE,
+          leg.nspecies = 6,
+          #           leg.posn = "topright",
+          cex.lab = 0.9, cex.legend = 1, cex.axis = 0.8, line.ylab = 0.8)
+dev.off()
+#
+# Cumulative Importance (total)
+
+png(file = "WSS_short_cumImportance_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+
+# tiff(file = paste0(figure.dir, "CCE-cumImportance_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 600)
+#
+par(mgp = c(1.0, 0.1, 0),
+    mar = c(2.25, 1, 0.1, 0.5),
+    omi = c(0,0.3, 0.1, 0),
+    family = "sans", tck = -0.015)
+spCumPlot(WSS_short_gfa, 
+          imp.vars = imp.vars, 
+          #           imp.vars.names = #c(ADD NAMES HERE),
+          show.species = FALSE,
+          show.overall = TRUE,
+          common.scale = TRUE,
+          leg.nspecies = 6,
+          cex.lab = 0.9, cex.legend = 0.7, cex.axis = 0.8, line.ylab = 0.8)
+dev.off()
+#
+# Collect PCA info
+Trns_grid <- predict(WSS_short_gfa, dat[, imp.vars])
+row.names(Trns_grid) <- c(YEAR)
+WSS_short_PCs <- prcomp(Trns_grid[, imp.vars])
+#
+ggsave(file="WSS_short_PCA_v03.png", PCbiplot(WSSPCs),
+       width = 83, height = 83, units = "mm", scale = 2)
+```
+
