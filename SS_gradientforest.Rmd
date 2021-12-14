@@ -1139,7 +1139,7 @@ predictor.ranges.plot <-
 ```
 
 
-?PC##PCA plot function
+##PCA plot function
 ```{r}
 PCbiplot <- function(PC, x="PC1", y="PC2") {
     # PC being a prcomp object
@@ -1323,6 +1323,7 @@ dat<-cbind(ESSenv,ESSbio)
 ind.name<-colnames(ESSbio)
 dri.name<-colnames(ESSenv)
 
+set.seed(627)
 # Many of the pressure variables do not have full data (some NA):
 ## Option 1- Impute:
 # dat <- na.roughfix(dat)
@@ -1538,6 +1539,7 @@ dat<-cbind(ESSenv,ESSbio)
 ind.name<-colnames(ESSbio)
 dri.name<-colnames(ESSenv)
 
+set.seed(627)
 # Many of the pressure variables do not have full data (some NA):
 ## Option 1- Impute:
 # dat <- na.roughfix(dat)
@@ -1551,7 +1553,7 @@ lev <- floor(log2(nrow(dat) * 0.368/2))
 ESS_short_gfa <-   gradientForest(data = dat, 
                                   predictor.vars = dri.name, 
                                   response.vars = ind.name,
-                                  ntree = 1500, 
+                                  ntree = 2500, 
                                   transform = NULL,
                                   maxLevel = lev,
                                   corr.threshold = 0.5, 
@@ -1560,7 +1562,7 @@ ESS_short_gfa <-   gradientForest(data = dat,
 
 #save Rdata
 
-save(ESS_short_gfa, file = "ESS.short.gfa.v03_coli.RDATA")
+save(ESS_short_gfa, file = "ESS.short.gfa.v05_coli.RDATA")
 
 
 #
@@ -1609,7 +1611,7 @@ pressureDF[,c(3:5)] <- apply(pressureDF[,c(3:5)], 2, signif, 2)
 #
 modPerformance <- rbind(pressureDF, indicatorDF)
 ##
-write.csv(modPerformance, file = "ESS_short_gfModelPerformance_v03_coli.csv")
+write.csv(modPerformance, file = "ESS_short_gfModelPerformance_v05_coli.csv")
 #         
 #########
 # PLOTS #
@@ -1619,7 +1621,7 @@ imp.vars <- names(importance(ESS_short_gfa)[importance(ESS_short_gfa) > 0])
 
 #
 # Overall Importance
-png(file = "ESS_short_Importance_v03.png", width = 83, height = 200, units = "mm", res = 600)
+png(file = "ESS_short_Importance_v05.png", width = 83, height = 200, units = "mm", res = 600)
 par(mgp = c(.75, 0.05, 0), 
     mar = c(2.75, 6.5, 0.1, .5),
     omi = c(0, 0.3, 0.1, 0),
@@ -1632,7 +1634,7 @@ dev.off()
 #
 #
 # Split Ratio
-png(file = "ESS_short_splitRatio_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+png(file = "ESS_short_splitRatio_v05.png", width = 173.5, height = 173.5, units = "mm", res = 600)
 # tiff(file = paste0(figure.dir, "CCE-splitRatio_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 600)
 par(mgp = c(.75, 0.05, 0), 
     mar = c(2.25, 1, 0.1, .5),
@@ -1648,7 +1650,7 @@ spRatio(ESS_short_gfa,
 dev.off()
 
 # Density of Splits
-png(file = "ESS_short_splitImportance_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+png(file = "ESS_short_splitImportance_v05.png", width = 173.5, height = 173.5, units = "mm", res = 600)
 # tiff(file = paste0(figure.dir, "CCE-splitImportance_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 600)
 par(mgp = c(.75, 0.05, 0), 
     mar = c(2.25, 1, 0.1, .5),
@@ -1663,7 +1665,7 @@ spImportance(ESS_short_gfa,
 dev.off()
 #
 # Density of Data
-png(file = "ESS_short_splitData_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+png(file = "ESS_short_splitData_v05.png", width = 173.5, height = 173.5, units = "mm", res = 600)
 # tiff(file = paste0(figure.dir, "CCE-splitData_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 600)
 #
 par(mgp = c(.75, 0.05, 0), 
@@ -1679,7 +1681,7 @@ spData(ESS_short_gfa,
 dev.off()
 #
 # Cumulative Importance (split)
-png(file ="ESS_short_cumImportanceSplit_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+png(file ="ESS_short_cumImportanceSplit_v05.png", width = 173.5, height = 173.5, units = "mm", res = 600)
 # tiff(file = paste0(figure.dir, "CCE-cumImportanceSplit_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 1000)
 
 par(mgp = c(1.0, 0.1, 0),
@@ -1700,7 +1702,7 @@ dev.off()
 #
 # Cumulative Importance (total)
 
-png(file = "ESS_short_cumImportance_v03.png", width = 173.5, height = 173.5, units = "mm", res = 600)
+png(file = "ESS_short_cumImportance_v05.png", width = 173.5, height = 173.5, units = "mm", res = 600)
 
 # tiff(file = paste0(figure.dir, "CCE-cumImportance_v2016_04.tiff"), width = 173.5, height = 173.5, units = "mm", res = 600)
 #
@@ -1751,6 +1753,7 @@ dat<-cbind(WSSenv,WSSbio)
 ind.name<-colnames(WSSbio)
 dri.name<-colnames(WSSenv)
 
+set.seed(627)
 # Many of the pressure variables do not have full data (some NA):
 ## Option 1- Impute:
 # dat <- na.roughfix(dat)
@@ -1964,6 +1967,7 @@ dat<-cbind(WSSenv,WSSbio)
 ind.name<-colnames(WSSbio)
 dri.name<-colnames(WSSenv)
 
+set.seed(627)
 # Many of the pressure variables do not have full data (some NA):
 ## Option 1- Impute:
 # dat <- na.roughfix(dat)
@@ -2146,10 +2150,10 @@ dev.off()
 #
 # Collect PCA info
 Trns_grid <- predict(WSS_short_gfa, dat[, imp.vars])
-row.names(Trns_grid) <- c(YEAR)
+row.names(Trns_grid) <- c(wss.short.year$YEAR)
 WSS_short_PCs <- prcomp(Trns_grid[, imp.vars])
 #
-ggsave(file="WSS_short_PCA_v03.png", PCbiplot(WSSPCs),
+ggsave(file="WSS_short_PCA_v03.png", PCbiplot(WSS_short_PCs),
        width = 83, height = 83, units = "mm", scale = 2)
 ```
 
