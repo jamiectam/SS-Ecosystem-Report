@@ -470,23 +470,40 @@ eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
   
   bio_ind_4x<-eco_indicators_nafo %>%
   filter(ID=="4X", YEAR<2021)%>%
-        select(YEAR,BIOMASS_ALL, BIOMASS_FORAGE, BIOMASS_GADOIDS, BIOMASS_INVERTEBRATES)%>%
-  pivot_longer(c(BIOMASS_ALL, BIOMASS_FORAGE, BIOMASS_GADOIDS, BIOMASS_INVERTEBRATES)) 
+        select(YEAR,BIOMASS_ALL, BIOMASS_FORAGE, BIOMASS_GADOIDS)%>%
+  pivot_longer(c(BIOMASS_ALL, BIOMASS_FORAGE, BIOMASS_GADOIDS)) 
+  
+  bio_inv_4x<-eco_indicators_nafo %>%
+  filter(ID=="4X", YEAR<2021)%>%
+        select(YEAR, BIOMASS_INVERTEBRATES)
   
     
   mean_bio_ind_4x <- bio_ind_4x %>% group_by(name) %>% summarise(mean_bio=mean(value))
+  mean_bio_inv_4x <- bio_inv_4x %>% summarise(mn=mean(BIOMASS_INVERTEBRATES))
   
-  pi<-ggplot(bio_ind_4x, aes(x = YEAR, y = value, color = name)) +
+  pi1<-ggplot(bio_ind_4x, aes(x = YEAR, y = value, color = name)) +
   theme_classic()+
   geom_line(size=1)+
   labs(y="Biomass (t)")+
   guides(color = guide_legend(title = "Biomass"))+
   geom_hline(data=mean_bio_ind_4x, aes(yintercept=mean_bio, col=name), linetype='dotted')+
   annotate(geom = "rect",
-           xmin = 2018, xmax = 2022,
+           xmin = 2016, xmax = 2020,
            ymin = -Inf, ymax = Inf,
            fill = "grey", alpha = 0.2)
-  pi
+  
+  pi2<-ggplot(bio_inv_4x, aes(x = YEAR, y = BIOMASS_INVERTEBRATES)) +
+  theme_classic()+
+  geom_line(size=1)+
+  labs(y="Invertebrate Biomass (t)")+
+  guides(color = guide_legend(title = "Biomass"))+
+  geom_hline(data=mean_bio_inv_4x, aes(yintercept=mn), linetype='dotted')+
+  annotate(geom = "rect",
+           xmin = 2016, xmax = 2020,
+           ymin = -Inf, ymax = Inf,
+           fill = "grey", alpha = 0.2)
+  
+  pi1/pi2
   
 ```
 
