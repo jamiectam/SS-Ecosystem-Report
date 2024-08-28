@@ -2,8 +2,10 @@
 title: " 2024 Ecosystem Summary Report pilot for 4X_V3"
 author: "Maritimes EBFM WG"
 date: "`r Sys.Date()`"
-output: word_document
-
+output:
+  word_document:
+   reference_docx: MAR_Ecosystem_Report_style.docx
+ 
 ---
 
 ```{r setup, include=FALSE}
@@ -39,21 +41,20 @@ require (officedown)
 # install_github("jamiectam/MAReco")
 ```
 
-```{r,fig.align="center", echo = FALSE,fig.width = 10, fig.cap="Figure a. NAFO Division 4X in blue."}
+```{r,fig.align="center", echo = FALSE,fig.width = 10}
 knitr::include_graphics(here("figures", "nafomap_4X.jpeg"))
 
 ```
 
 # Introduction
 ## About this report
-This Ecosystem Summary Report supports DFO's efforts to incorporate an ecosystem context into fisheries Science and Resource Management in the Maritimes Region. The purpose of this report is to synthesize ecosystem information to inform an ecosystem approach, as highlighted in the modernized Fisheries Act [2019; Bill C-68](https://lop.parl.ca/sites/PublicWebsite/default/en_CA/ResearchPublications/LegislativeSummaries/421C68E). It aligns objectives broadly to those of the [Maritimes Ecosystem Based Management Framework](https://sites.google.com/view/ebminitiative/ebm-initiative-home), and regional/area-based objectives that contribute to Scientific Advice and Management Plans or other Harvest Strategies. This Ecosystem Report aims to support an integrative suite of ecosystem indicators relevant to a specific fisheries management area that supports Ecosystem Approaches to Fisheries Management [EAFM](https://www.dfo-mpo.gc.ca/fisheries-peches/initiatives/ecosystems-approach-approche-ecosystemique/index-eng.html) and Ecosystem Based Fisheries Management [EBFM](https://sites.google.com/view/maritimesebfmwg/home).
+This Ecosystem Summary Report supports DFO's efforts to incorporate an ecosystem context into fisheries Science and Resource Management in the Maritimes Region. The purpose of this report is to synthesize ecosystem information to inform an ecosystem approach, as highlighted in the modernized Fisheries Act [2019; Bill C-68](https://lop.parl.ca/sites/PublicWebsite/default/en_CA/ResearchPublications/LegislativeSummaries/421C68E). It aligns objectives broadly to those of the [Maritimes Ecosystem Based Management Framework](https://sites.google.com/view/ebminitiative/ebm-initiative-home), and regional/area-based objectives that contribute to Scientific Advice and Management Plans or other Harvest Strategies. This Ecosystem Report aims to support an integrative suite of ecosystem indicators relevant to a specific fisheries management area that can support Ecosystem Approaches to Fisheries Management [EAFM](https://www.dfo-mpo.gc.ca/fisheries-peches/initiatives/ecosystems-approach-approche-ecosystemique/index-eng.html) and Ecosystem Based Fisheries Management [EBFM](https://sites.google.com/view/maritimesebfmwg/home).
 
 
 ## Report structure
-This report reviews relevant ecosystem indicator trends and the status of the most recent year or 5 years relative to a reference point (if available) or a long-term average. The indicators presented are linked to ecosystem objectives (Table 1). The results are synthesized to outline potential implications for the management area examined. This report attempts to synthesize the general ecosystem trends to support integration of ecosystem information and expertise into Science Advice (e.g. Assessment Frameworks, stock Assessments, Fisheries Science Advice Reports/Fisheries Science Rebuilding Reports, Science Science Advisory presentations) or Resource Management (e.g. Integrated Fisheries Management Plans).
+This report outlines ecosystem objectives related to management area (Table 1), and reviews relevant ecosystem indicator trends and the status of the most recent year or years relative to a reference point (if available) or a long-term average. The results are synthesized to outline potential implications for the management area examined. Where relevant this document provides links to reports and resources for details and methodology. This report summarizes general ecosystem trends to support integration of ecosystem information and expertise into Science Advice (e.g. stock assessment) or Resource Management (e.g. Integrated Fisheries Management Plans), but is intended for a variety of users.
 
 This is a summary of the best available information describing the ecosystem specific to the management areas within the Maritimes Region.
-
 
 
 # Ecosystem Objectives
@@ -61,19 +62,27 @@ This is a summary of the best available information describing the ecosystem spe
 The Ecosystem objectives for NAFO Division 4X outline the ecosystem context and consideration for this management area. 
 
 
-Table 1. Ecosystem objectives related to EBM Framework Pillar, management components, and indicators.
+```{r, echo=FALSE, tab.cap="Table 1.Ecosystem objectives related to EBM Framework Pillar, Management Components, and Indicators." }
+dat.dir<-here::here("data")
+Ecosystem_Report_4x_objectives<- "Ecosystem_Report_4x_objectives.Rdata"
+  load(file.path(dat.dir, Ecosystem_Report_4x_objectives))
+  
+set_flextable_defaults(font.size = 9, padding = 1, na_str="na")
+options(flextable.print = Inf)
 
-| **Pillar** | **Management Component** | **Ecosystem Objective** | **Indicators** | 
-|------|------------------------|----------------|-----------------|
-| A.Pressures and Stressors | Climate and Oceanography | Describe key signals within the environment and ecosystem | NAO, Climate anomalies, SST, Bottom Temperature| 
-| A. Pressures and Stressors | Climate and Oceanography | Ensure climate adaptation | Future projection model outputs |
-| B. Ecological | Commercial Fishery | Maintain fishing pressure consistent with the ecosystem's ability to recover | Fishing pressure, landings |
-| B. Ecological | Habitat |Maintain stability of habitats |  |
-| B. Ecological | Biodiversity | Conserve, maintain, and restore biodiversity to preserve the structure and natural resilience of aquatic ecosystems | Guild-level biomass, species diversity |
-| B. Ecological | Non-Target Species | Fish sustainably while minimizing adverse impacts on non-target species | catch profiles, percentage of observers |
-| C. Economic | Commercial Fishery | Long-term sustainable economic prosperity for all users | Landings Value |
-| D. Social-Cultural |  |Not developed for this report  | Not developed for this report |
-| E. Governance |  |Not developed for this report  | Not developed for this report |
+Table_01c<- as.data.frame(Ecosystem_Report_4X_objectives)
+
+ft_01<-flextable(Table_01c) %>%
+  theme_vanilla()%>%
+  merge_v(j= "Attribute")%>%
+  theme_booktabs(bold_header = TRUE) %>%
+   set_table_properties(layout = "autofit", width = 0.9)
+                        
+   ft_01        
+   
+```
+
+\newpage
 
 # A. Pressures and Stressors
 
@@ -85,61 +94,70 @@ Air temperature in the 4X area (Yarmouth, NS) has been increasing at a rate of 1
 The sea surface temperature in the 4X area has been warming at a rate of about 0.5°C/decade over the last 40 years. The last two years reported by AZMP (2021-2022) were the two warmest years in 4X since the start of observations. 
 
 ### North Atlantic Oscillation Index
-[Hebert et al. 2024](https://publications.gc.ca/collections/collection_2024/mpo-dfo/Fs97-18-380-eng.pdf) (Section 2.1)
+[Hebert et al. 2024](https://publications.gc.ca/collections/collection_2024/mpo-dfo/Fs97-18-380-eng.pdf) (see Section 2.1)
+
+```{r,fig.align="center", echo = FALSE,fig.width = 5, fig.cap="Figure 1. The North Atlantic Oscillation (NAO) index, defined as the winter (December, January, February, March) 500 mb pressure Principal Component Analysis which is representative of the difference between the Icelandic low and Azores high. Thick line is a 5-year moving average. Climatological mean is shown as the solid line. Dashed lines are ±0.5 standard deviation (SD)."}
+
+knitr::include_graphics(here("figures", "nao.png"))
+
+```
 
 - In 2023, the winter (December–March) North Atantic Oscillation (NAO) index was below the 1991 – 2020 mean, –0.31 (–0.84 SD; Figure 1). A high NAO index corresponds to an intensification of the pressure difference between the Icelandic Low and the Azores High. Strong northwest winds, cold air and sea temperatures, and heavy ice in the Labrador Sea and on the NL shelf areas, are usually associated with a high positive NAO index (Colbourne et al. 1994; Drinkwater 1996). The opposite response occurs during years with a negative NAO index.
 
 - The NAO has been shown to strongly affect bottom temperature distributions throughout the region from the Labrador Shelf to the Gulf of Maine (Petrie 2007). The response is bimodal, the product of direct and advective effects, with positive (negative) NAO generally corresponding to colder- (warmer-) than-normal bottom temperatures over the Labrador-Newfoundland Shelf, the Gulf of St. Lawrence, and the Eastern Scotian Shelf, and warmer- (colder-) than-normal conditions on the Central and Western Scotian Shelf and in the Gulf of Maine. 
 
 
-```{r,fig.align="center", echo = FALSE,fig.width = 14, fig.cap="Figure 1. NAO Index on the Western Scotian Shelf from 1950-2023"}
-knitr::include_graphics(here("figures", "nao.png"))
+### Sea Surface Temperature Anomaly
+[Hebert et al. 2024](https://publications.gc.ca/collections/collection_2024/mpo-dfo/Fs97-18-380-eng.pdf) (see Section 3)
 
-```
+```{r,fig.align="center", echo = FALSE,fig.width = 5, fig.cap="Figure 2. The annual sea-surface-temperature normalized anomaly for NAFO 4X derived from satellite imagery compared to their long-term monthly means.Horizontal dashed lines represent plus or minus 0.5 SD for the 1991-2020 period. Regime shift analysis results from running the method forwards and backwards on the time series depicted by the blue and red horizontal lines, respectively. "}
 
-### SST Anomaly
-[Hebert et al. 2024](https://publications.gc.ca/collections/collection_2024/mpo-dfo/Fs97-18-380-eng.pdf) (Section 3)
-
-- The annual anomalies during 2023 was  +1.1◦C (+1.5 SD) in eastern Gulf of Maine/Bay of Fundy and x.x ◦C (x.x SD) in 4X on the Scotian Shelf. SST remained above normal, with the last three years being the three warmest years in 4XSS. NAFO division 4X eastern Gulf of Maine/Bay of Fundy remained above normal, but was cooler than the previous two years. A regime shift algorithm to detect a step change using mean levels was applied to the annual time-series (Rodionov 2004). Over the length of the record, the temperature has three distinct periods at all regions, a relatively cooler period from 1982 to 1993, near the climatological mean from 1994 to 2011, and a relatively warmer period from 2012 to present.
-
-```{r,fig.align="center", echo = FALSE,fig.width = 14, fig.cap="Figure 2. SST annual anomaly "}
 knitr::include_graphics(here("figures", "sstSatelliteAnnualAnomaly_regimeShift_4XSS.png"))
 
 ```
 
-### Bottom Temperature
-[Hebert et al. 2024](https://publications.gc.ca/collections/collection_2024/mpo-dfo/Fs97-18-380-eng.pdf) (Section 8.2)
+- The annual anomalies during 2023 was  +1.1◦C (+1.5 SD) in eastern Gulf of Maine/Bay of Fundy and x.x ◦C (x.x SD) in 4X on the Scotian Shelf. SST remained above normal, with the last three years being the three warmest years in 4XSS. NAFO division 4X eastern Gulf of Maine/Bay of Fundy remained above normal, but was cooler than the previous two years. A regime shift algorithm to detect a step change using mean levels was applied to the annual time-series (Rodionov 2004). Over the length of the record, the temperature has three distinct periods at all regions, a relatively cooler period from 1982 to 1993, near the climatological mean from 1994 to 2011, and a relatively warmer period from 2012 to present.
 
-- The summer survey took place from 29 June to 14 August 2023. A total of 203 Conductivity-Temperature-Depth (CTD) stations were sampled. The survey covered part of Eastern Georges Bank (NAFO Division 5Ze), to the mouth of the Bay of Fundy (northwest portion of NAFO Division 4X), and spanned the entirety of the Scotian Shelf up to Cabot Strait (NAFO Divisions 4X, 4W, 4Vs, and 4Vn). The near-bottom temperature anomalies for 2023 were near normal on Eastern Georges Bank, to the mouth of the Bay of Fundy, and the western portion of 4X. On the eastern portion of 4X bottom temperatures were above normal. The anomaly varied for the NAFO Division was +0.3◦C (+0.3 SD) for 4X (the last two years were the warmest on record; 2012 was the record high) (Figure 31). All regions show elevated bottom temperatures since approximately year 2010.
 
-```{r,fig.align="center", echo = FALSE,fig.width = 14, fig.cap="Figure 3. Bottom temperature anomaly. "}
+### Bottom Temperature Anomaly
+[Hebert et al. 2024](https://publications.gc.ca/collections/collection_2024/mpo-dfo/Fs97-18-380-eng.pdf) (see Section 8.2)
+
+```{r,fig.align="center", echo = FALSE, fig.width = 5, fig.cap="Figure 3. Time series of July bottom-temperature anomalies (thin lines with circles) and five-year-running-mean filtered series (heavy line) for NAFO 4X The solid horizontal line is the 1991-2020 mean and dashed lines represent ±0.5 SD. Regime shift analysis results from running the method forwards and backwards on the time series depicted by the blue and red horizontal lines, respectively."}
+
 knitr::include_graphics(here("figures", "annualAnomaly_regimeShift_4X.png"))
 
 ```
 
+- The summer survey took place from 29 June to 14 August 2023. A total of 203 Conductivity-Temperature-Depth (CTD) stations were sampled. The survey covered part of Eastern Georges Bank (NAFO Division 5Ze), to the mouth of the Bay of Fundy (northwest portion of NAFO Division 4X), and spanned the entirety of the Scotian Shelf up to Cabot Strait (NAFO Divisions 4X, 4W, 4Vs, and 4Vn). The near-bottom temperature anomalies for 2023 were near normal on Eastern Georges Bank, to the mouth of the Bay of Fundy, and the western portion of 4X. On the eastern portion of 4X bottom temperatures were above normal. The anomaly varied for the NAFO Division was +0.3◦C (+0.3 SD) for 4X (the last two years were the warmest on record; 2012 was the record high) (Figure 31). All regions show elevated bottom temperatures since approximately year 2010.
+
+
 ## Longer-term climate change
-Ocean model long-term forecast and projections provide a general expectation of how the world may change. Ocean model projections use low and high emissions pathways as future scenarios to frame expectations of the future ocean climate.  
+
+Ocean model long-term forecast and projections provide a general expectation of how the world may change. Ocean model projections use low and high emissions pathways as future scenarios to frame expectations of the future ocean climate.
+
+```{r,fig.align="center", echo = FALSE,fig.width = 8, fig.cap="Figure 4. Future scenarios for sea surface temperature changes."}
+knitr::include_graphics(here("figures", "SSPs_2040P_change_annual.png"))
+```
 
 - In 4X by 2050, the onset of spring is expected to occur 3-4 weeks earlier than present day and the growing season is expected to last 4-6 weeks longer (Brickman & Shackell, 2024) 
 
 - Projected changes in sea surface temperature (2040-2059 relative to present day) for the Scotian Shelf and Gulf of Maine range from approximately 1.5 to 2.5°C (based on IPCC scenarios SSP2-4.5 to SSP5-8.5) (Wang et al, 2024).  
 
-- NAFO Divsion 4X is in the southerly area of the NW Atlantic, where many species are at the southerly part of their range. Combined with a rapidly changing ocean, we can expect shifts in productivity and distribution, as well as shifts in the seasonal timing of their reproductive cycles.
+- NAFO Division 4X is in the southerly area of the NW Atlantic, where many species are at the southerly part of their range. Combined with a rapidly changing ocean, we can expect shifts in productivity and distribution, as well as shifts in the seasonal timing of their reproductive cycles.
 
-- By 2050, a valuable spp such as lobster is not expected to be vulnerable in LFA 34 and offshore in 4X, but does show increased vulnerability in the Bay of Fundy (Greenan et al. 2019). By 2100, under both low and high emissions scenario, most marine species across the Canadian portion of the NW Atlantic are from moderate to high climate risk, and indeed, are at a lower risk compared to many areas around the globe, especially tropical ecosystems. While the NW Atlantic is warming rapidly, the resident species are, on average, widespread across the seascape, and are accustomed to a wider range of temperatures (Boyce et al. 2024). However, formerly commercial but now depleted spp will be at much greater risk due to their low population sizes  (Boyce et al. 2024, see Fig 5 for list). 
+- By 2050, a valuable species such as lobster is not expected to be vulnerable in LFA 34 and offshore in 4X, but does show increased vulnerability in the Bay of Fundy (Greenan et al. 2019). By 2100, under both low and high emissions scenario, most marine species across the Canadian portion of the NW Atlantic are from moderate to high climate risk, and indeed, are at a lower risk compared to many areas around the globe, especially tropical ecosystems. While the NW Atlantic is warming rapidly, the resident species are, on average, widespread across the seascape, and are accustomed to a wider range of temperatures (Boyce et al. 2024). However, formerly commercial but now depleted spp will be at much greater risk due to their low population sizes  (Boyce et al. 2024, see Fig 5 for list). 
 
-```{r,fig.align="center", echo = FALSE,fig.width = 14, fig.cap="Figure x. Figure from Blair. "}
-knitr::include_graphics(here("figures", "Jura_Tam-Hauser.jpg"))
-```
 
 # B. Ecological 
 
 ## Commercial Fishery
 
 ### Fishing Pressure
-- The latest robust estimates of overall fishing pressure in 4X (2020) has been below the long-term average, but fishing pressure on forage fish in the area has been steadily increasing between 2016-2020 and above it's long-term average. This is likely due to low biomass estimates for forage fish during this period.
+[Bundy et al. 2019](https://publications.gc.ca/site/eng/9.845487/publication.html) (see Table S4)
 
-```{r ,fig.align="center", echo = FALSE,fig.width = 14, fig.height = 12, fig.cap="Figure xx. Fishing pressure from 1970-2020"}
+This indicator measures the level of exploitation or total fishing pressure at the ecosystem level (Landings/Biomass). Change in this indicator can result from change in biomass, landings or both. 
+
+```{r ,fig.align="center", echo = FALSE,fig.width = 14, fig.cap="Figure 5. Fishing pressure from 1970-2020."}
 
 dat.dir<-here::here("data")
 eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
@@ -212,15 +230,16 @@ pa4<-ggplot(fp_inv, aes(x = YEAR, y = FP_INVERTEBRATES)) +
            ymin = -Inf, ymax = Inf,
            fill = "grey", alpha = 0.2)
 
-pa1/pa2/pa3/pa4
+(pa1|pa2)/(pa3|pa4)
 
 ```
 
+- The latest robust estimates of overall fishing pressure in 4X (2020) has been below the long-term average, but fishing pressure on forage fish in the area has been steadily increasing between 2016-2020 and above it's long-term average. This is likely influenced primarily by low biomass estimates for forage fish during this period and not by an increase in landings.
+
 ### Commercial Landings
+[Bundy et al. 2019](https://publications.gc.ca/site/eng/9.845487/publication.html) (see Table S4)
 
-- Commercial fisheries landings have generally been below the long-term average for the last 5 years.
-
-```{r, fig.align="center", echo = FALSE,fig.width = 14, fig.cap ="Commercial landings for the NAFO Division 4X."}
+```{r, fig.align="center", echo = FALSE,fig.width = 14, fig.cap ="Figure 6. Commercial landings for species categories in NAFO 4X. Dotted line represents the long-term mean."}
 
 dat.dir<-here::here("data")
 eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
@@ -239,6 +258,7 @@ sd_land_ind_4x <- land_ind_4x %>% group_by(name) %>% summarise (sd_land = sd(val
 pb<-ggplot(land_ind_4x, aes(x = YEAR, y = value, color = name)) +
   theme_classic()+
   geom_line(size=1)+
+  labs(y="Landings (kg)")+
    guides(color = guide_legend(title = "Landings"))+
   geom_hline(data=mean_land_ind_4x, aes(yintercept=mn, col=name), linetype='dotted')+
   annotate(geom = "rect",
@@ -249,9 +269,15 @@ pb<-ggplot(land_ind_4x, aes(x = YEAR, y = value, color = name)) +
 pb
 ```
 
-## Habitat 
+- Commercial fisheries landings have generally been below the long-term average for the last 5 years.
 
-```{r, fig.align="center", echo = FALSE,fig.width = 14, fig.cap="Sea Surface Temperature and Bottom temperature for the Western Scotian Shelf"}
+
+## Habitat 
+For many fish species, habitat can also include the environmental condition that surrounds them. For many fish species sea surface temperature and bottom temperature play an important role in their distribution.
+
+### Sea Surface Temperature, Bottom Temperature
+
+```{r, fig.align="center", echo = FALSE,fig.width = 14, fig.cap="Figure 7. Sea Surface Temperature and Bottom temperature for the Western Scotian Shelf."}
 
 dat.dir<-here::here("data")
 SS_environmental_indicators<- "SS_environmental_indicators.Rdata"
@@ -269,7 +295,7 @@ mean_BottomT <- BottomT_ind_SS %>% summarise(mn=mean(Bottom_Temp_Shelf))
 pc1<-ggplot(SST_ind_SS, aes(x = YEAR, y = SST)) +
   theme_classic()+
   geom_line(color="red", size=1)+
-  geom_smooth(method=glm, se=F)+
+  # geom_smooth(method=glm, se=F)+
   geom_hline(data=mean_SST, aes(yintercept=mn), linetype='dotted')+
   annotate(geom = "rect",
            xmin = 2014, xmax = 2018,
@@ -279,22 +305,24 @@ pc1<-ggplot(SST_ind_SS, aes(x = YEAR, y = SST)) +
 pc2<-ggplot(BottomT_ind_SS, aes(x = YEAR, y = Bottom_Temp_Shelf)) +
   theme_classic()+
   geom_line(color="darkgreen", size=1)+
-  geom_smooth(method=glm, se=F)+
+  # geom_smooth(method=glm, se=F)+
   geom_hline(data=mean_BottomT, aes(yintercept=mn), linetype='dotted')+
   annotate(geom = "rect",
            xmin = 2014, xmax = 2018,
            ymin = -Inf, ymax = Inf,
            fill = "grey", alpha = 0.2)  
   
-  pc1/pc2
+  pc1|pc2
 ```
 
 ## Productivity
+Productivity in an ecosystem relates to the amount of energy or biomass available to consumers in the ecosystem. 
 
-- In 2021, the abundance of C. finmarchicus was mainly lower than normal, particularly at HL2 and in the western area (BBL and P5).
+### Chlorophyll, Bloom Duration, *Calanus finmarchicus*,  Zooplankton Biomass
 
+[Casault et al. 2024](https://publications.gc.ca/collections/collection_2024/mpo-dfo/Fs97-6-3589-eng.pdf) 
 
-```{r fig.align="center", echo = FALSE,fig.width = 14, fig.cap="Chlorophyll, C.finmarchicus, and zooplankton biomass for the Western Scotian Shelf (including NAFO 4X and 5Y) from 1999-2018"}
+```{r fig.align="center", echo = FALSE,fig.width = 14, fig.cap="Figure 8. Chlorophyll to 100m depth, Bloom Duration, C.finmarchicus, and Zooplankton biomass for the Western Scotian Shelf (including NAFO 4X and 5Y) from 1999-2018."}
 dat.dir<-here::here("data")
 SS_environmental_indicators<- "SS_environmental_indicators.Rdata"
   load(file.path(dat.dir, SS_environmental_indicators))
@@ -310,11 +338,15 @@ SS_environmental_indicators<- "SS_environmental_indicators.Rdata"
   ZP_ind<-SS_environmental_indicators%>%
         filter(YEAR>1998 & ID=="WSS")%>%
         select(YEAR,Zooplankton_Biomass)
+  
+  BD_ind<-SS_environmental_indicators%>%
+        filter(YEAR>1998 & ID=="WSS")%>%
+        select(YEAR,Bloom_Duration)
 
 mean_PP_ind <- PP_ind |> summarise(mn=mean(Chlorophyll_100m))
 mean_CF_ind <- CF_ind |> summarise(mn=mean(C_finmarchicus))
 mean_ZP_ind <- ZP_ind |> summarise(mn=mean(Zooplankton_Biomass))
-
+mean_BD_ind <- BD_ind |> summarise(mn=mean(Bloom_Duration))
 
 ph1<-ggplot(PP_ind, aes(x = YEAR, y = Chlorophyll_100m)) +
   theme_classic()+
@@ -326,7 +358,17 @@ ph1<-ggplot(PP_ind, aes(x = YEAR, y = Chlorophyll_100m)) +
            ymin = -Inf, ymax = Inf,
            fill = "grey", alpha = 0.2)
 
-ph2<-ggplot(CF_ind, aes(x = YEAR, y = C_finmarchicus)) +
+ph2<-ggplot(BD_ind, aes(x = YEAR, y = Bloom_Duration)) +
+  theme_classic()+
+  geom_line(color="darkgreen", size=1)+
+  # geom_smooth(method=glm, se=F)+
+  geom_hline(data= mean_BD_ind, aes(yintercept=mn), linetype='dotted')+
+  annotate(geom = "rect",
+           xmin = 2014, xmax = 2018,
+           ymin = -Inf, ymax = Inf,
+           fill = "grey", alpha = 0.2)
+
+ph3<-ggplot(CF_ind, aes(x = YEAR, y = C_finmarchicus)) +
   theme_classic()+
   geom_line(color="darkorange4", size=1)+
   # geom_smooth(method=glm, se=F)+
@@ -336,7 +378,7 @@ ph2<-ggplot(CF_ind, aes(x = YEAR, y = C_finmarchicus)) +
            ymin = -Inf, ymax = Inf,
            fill = "grey", alpha = 0.2)
 
-ph3<-ggplot(ZP_ind, aes(x = YEAR, y = Zooplankton_Biomass)) +
+ph4<-ggplot(ZP_ind, aes(x = YEAR, y = Zooplankton_Biomass)) +
   theme_classic()+
   geom_line(color="cadetblue", size=1)+
   # geom_smooth(method=glm, se=F)+
@@ -346,13 +388,22 @@ ph3<-ggplot(ZP_ind, aes(x = YEAR, y = Zooplankton_Biomass)) +
            ymin = -Inf, ymax = Inf,
            fill = "grey", alpha = 0.2)
 
-ph1/ph2/ph3
+
+
+(ph1|ph2)/(ph3|ph4)
 ```
 
-## Biodiveristy
-Species Diversity and Richness
+- In 2021, the abundance of *C. finmarchicus* was mainly lower than normal, particularly at HL2 and in the western area (BBL and P5).
 
-```{r fig.align="center", echo = FALSE,fig.width = 14}
+## Biodiveristy
+Biodiversity is described as the variety and variability among living organisms from all sources ([CBD](https://www.cbd.int/convention)). Biodiversity is linked to resilience and plays an imporant role in maintaining functionality and productivity of ecosystems.
+
+### Shannon Diveristy Index, Margalef Richness, Heips Evenness
+[Bundy et al. 2019](https://publications.gc.ca/site/eng/9.845487/publication.html)(See Table S4).
+
+Shannon diversity Index accounts for both abundance and evenness of species present in a community. Margalef Richness measures the number of species present accounting for sampling effects. Heips Evenness measures how equally the species richness contributes to the total abundance or biomass of the community.
+
+```{r fig.align="center", echo = FALSE,fig.width = 14, fig.cap="Figure 9. Shannon Diveristy Index, Margalef Richness, Hieps Evenness measured from RV survey data."}
 dat.dir<-here::here("data")
 eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
   load(file.path(dat.dir, eco_indicators_nafo))
@@ -404,12 +455,15 @@ pj2<-ggplot(Heips, aes(x = YEAR, y = Heips_ALL)) +
            ymin = -Inf, ymax = Inf,
            fill = "grey", alpha = 0.2)
   
-pj1/pj2/pj3
+(pj1|pj3)/(pj2)
   
 ```
 
+- Shannon Diveristy and Margalef Richness increase over time as new species are identified in the RV Surveys. Relative stability of Margalef Richness in recent years, but declines in latest year for diversity and evennnes.
 
-```{r fig.align="center", echo = FALSE,fig.width = 14, fig.cap="Total Biomass and guild-level biomass"}
+### Guild-level Biomass
+
+```{r fig.align="center", echo = FALSE,fig.width = 14, fig.cap="Figure 10. Total Biomass and guild-level biomass"}
 dat.dir<-here::here("data")
 eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
   load(file.path(dat.dir, eco_indicators_nafo))
@@ -446,48 +500,39 @@ eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
 ```
 
 
-# C. Economic
+# C. Economic 
 
-## Total Landed value (CAD)
-- Total landed value over time since 1990 (not corrected for inflation). Area in red is preliminary data (2021-2024) and subject to change. This data is currently not meant for public use. 
+## Commerical Fishery
 
-```{r fig.align="center", echo = FALSE,fig.width = 14}
-Landings_and_Value<- "Landings_and_Value.Rdata"
-  load(file.path(dat.dir, Landings_and_Value))
+### Landed value (CAD) by species catagory
+
+```{r fig.align="center", echo = FALSE,fig.width = 10, fig.cap="Figure x. Landed value of species categories since 1990 . Area in red is preliminary data (2021-2024) and subject to change." }
+MAR_Landings_Value_sp.Rdata<- "MAR_Landings_Value_sp.Rdata"
+  load(file.path(dat.dir, MAR_Landings_Value_sp.Rdata))
   
- totallandingsvalue_4X<-Landings_and_Value %>%
-  filter(NAFODIV=="4X")%>%
-        select(YEAR, WHARF_VALUE) %>%
-        na.omit()%>%
-        group_by(YEAR)%>%
-        summarise(total_Landings_Value=sum(WHARF_VALUE))
+Landings_value_4X<-MAR_Landings_Value_sp %>%
+  filter(ID=="4X")%>%
+        select(YEAR, Species_Category, Landed_Value_CAD)
+      
   
- # lob_landingsvalue_4X<- Landings_and_Value %>%
- #        filter(NAFODIV=="4X", SPECIES=="LOBSTER")%>%
- #        select(YEAR, WHARF_VALUE) %>%
- #        na.omit() %>%
- #        rename(lobster_landings=WHARF_VALUE)
- # 
- # landingsvalue_4X<-left_join (totallandingsvalue_4X, lob_landingsvalue_4X) %>%
- #                  pivot_longer(c(total_Landings_Value, lobster_landings))
-    
-  mean_LandingsValue_4x <-  totallandingsvalue_4X %>%
-                            select(total_Landings_Value) %>%
-                            summarise(mean_LandingsValue=mean(total_Landings_Value))
-
- 
-  pj<-ggplot(totallandingsvalue_4X, aes(x = YEAR, y =total_Landings_Value)) +
+  mean_land_ind_4x <- Landings_value_4X %>% group_by(Species_Category)|>  summarise(mn=mean(Landed_Value_CAD))
+  
+  pc1<-ggplot(Landings_value_4X, aes(x = YEAR, y = Landed_Value_CAD, color = Species_Category)) +
   theme_classic()+
   geom_line(size=1)+
-    guides(color = guide_legend(title = "Landings Value"))+
-  geom_hline(data=mean_LandingsValue_4x, aes(yintercept=mean_LandingsValue), linetype='dotted')+
+  labs(y="Landed Value (CAD)")+
+  guides(color = guide_legend(title = "Species Category"))+
+  geom_hline(data=mean_land_ind_4x, aes(yintercept=mn, col=Species_Category), linetype='dotted')+
   annotate(geom = "rect",
-           xmin = 2021, xmax = 2024,
+           xmin = 2021, xmax = 2023,
            ymin = -Inf, ymax = Inf,
            fill = "pink", alpha = 0.2)
-  pj
+ 
+pc1
   
 ```
+
+- Mollusc and crustacean landed value are highest in the 4X region compared to groundfish and pelagic fish. 
 
 # D. Social-Cultural
 
