@@ -70,7 +70,7 @@ This Ecosystem Summary Report supports DFO's efforts to incorporate an ecosystem
 
 
 ## Report structure
-This report outlines ecosystem objectives related to management area (Table 1), and reviews relevant ecosystem indicator trends and the status of the most recent year or years relative to a reference point (if available) or a long-term average. The results are synthesized to outline potential implications for the management area examined. Where relevant this document provides links to reports and resources for details and methodology. This report summarizes general ecosystem trends to support integration of ecosystem information and expertise into Science Advice (e.g. stock assessment) or Resource Management (e.g. Integrated Fisheries Management Plans), but is intended for a variety of users.
+This report outlines ecosystem objectives related to a specific management area (Table 1), and reviews relevant ecosystem indicator trends and the status of the most recent year(s) relative to a reference point (if available) or a long-term average. The results are synthesized to outline potential implications for the management area examined. Where relevant this document provides links to reports and resources for details and methodology. This report summarizes general ecosystem trends to support integration of ecosystem information and expertise into Science Advice (e.g. stock assessment) or Resource Management (e.g. Integrated Fisheries Management Plans), but is intended for a variety of users.
 
 This is a summary of the best available information describing the ecosystem specific to the management areas within the Maritimes Region.
 
@@ -121,7 +121,7 @@ knitr::include_graphics(here("figures", "nao.png"))
 
 ```
 
-- In 2023, the winter (December–March) North Atantic Oscillation (NAO) index was below the 1991 – 2020 mean, –0.31 (–0.84 SD; Figure 1). A high NAO index corresponds to an intensification of the pressure difference between the Icelandic Low and the Azores High. Strong northwest winds, cold air and sea temperatures, and heavy ice in the Labrador Sea and on the NL shelf areas, are usually associated with a high positive NAO index (Colbourne et al. 1994; Drinkwater 1996). The opposite response occurs during years with a negative NAO index.
+- In 2023, the winter (December–March) North Atlantic Oscillation (NAO) index was below the 1991 – 2020 mean, –0.31 (–0.84 SD; Figure 1). A high NAO index corresponds to an intensification of the pressure difference between the Icelandic Low and the Azores High. Strong northwest winds, cold air and sea temperatures, and heavy ice in the Labrador Sea and on the NL shelf areas, are usually associated with a high positive NAO index (Colbourne et al. 1994; Drinkwater 1996). The opposite response occurs during years with a negative NAO index.
 
 - The NAO has been shown to strongly affect bottom temperature distributions throughout the region from the Labrador Shelf to the Gulf of Maine (Petrie 2007). The response is bimodal, the product of direct and advective effects, with positive (negative) NAO generally corresponding to colder- (warmer-) than-normal bottom temperatures over the Labrador-Newfoundland Shelf, the Gulf of St. Lawrence, and the Eastern Scotian Shelf, and warmer- (colder-) than-normal conditions on the Central and Western Scotian Shelf and in the Gulf of Maine. 
 
@@ -129,7 +129,7 @@ knitr::include_graphics(here("figures", "nao.png"))
 ### Sea Surface Temperature Anomaly
 [Hebert et al. 2024](https://publications.gc.ca/collections/collection_2024/mpo-dfo/Fs97-18-380-eng.pdf) (see Section 3)
 
-```{r,fig.align="center", echo = FALSE,fig.width = 5, out.width="60%", fig.cap="Figure 2. The annual sea-surface-temperature normalized anomaly for NAFO 4X derived from satellite imagery compared to their long-term monthly means.Horizontal dashed lines represent plus or minus 0.5 SD for the 1991-2020 period. Regime shift analysis results from running the method forwards and backwards on the time series depicted by the blue and red horizontal lines, respectively. "}
+```{r,fig.align="center", echo = FALSE,fig.width = 5, out.width="60%", fig.cap="Figure 2. The annual sea-surface-temperature normalized anomaly for NAFO 4X derived from satellite imagery compared to their long-term monthly means. Horizontal dashed lines represent plus or minus 0.5 SD for the 1991-2020 period. Regime shift analysis results from running the method forwards and backwards on the time series depicted by the blue and red horizontal lines, respectively. "}
 
 knitr::include_graphics(here("figures", "sstSatelliteAnnualAnomaly_regimeShift_4XSS.png"))
 
@@ -216,7 +216,7 @@ knitr::include_graphics(here("figures", "SSPs_2040P_change_annual.png"))
 
 This indicator measures the level of exploitation or total fishing pressure at the ecosystem level (Landings/Biomass). Change in this indicator can result from change in biomass, landings or both. 
 
-```{r ,fig.align="center", echo = FALSE,fig.width = 10, fig.height=7, fig.cap="Figure 5. Fishing pressure from 1970-2020."}
+```{r ,fig.align="center", echo = FALSE,fig.width = 10, fig.height=7, fig.cap="Figure 5. Fishing pressure from 1970-2020 calculated from DFO Summer Research Vessel survey and has been corrected for catchability. Dotted lines denote long-term means."}
 
 dat.dir<-here::here("data")
 eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
@@ -293,12 +293,14 @@ pa4<-ggplot(fp_inv, aes(x = YEAR, y = FP_INVERTEBRATES)) +
 
 ```
 
-- The latest robust estimates of overall fishing pressure in 4X (2020) has been below the long-term average, but fishing pressure on forage fish in the area has been steadily increasing between 2016-2020 and above it's long-term average. This is likely influenced primarily by low biomass estimates for forage fish during this period and not by an increase in landings.
+- The latest robust estimates of overall fishing pressure in 4X (2020) has been below the long-term average since around 2005, but increased to above average in 2019. This is due to fishing pressure on forage fish in the area which has been steadily increasing between 2016-2020 and is above the long-term average. This is likely influenced primarily by low biomass estimates for forage fish during this period (Figure 10) since landings have not increased (Figure 6). 
+
+- Fishing pressure on gadoids and invertebrates have been below the long term mean since the late 1990s and late 2000s, respectively.
 
 ### Commercial Landings
 [Bundy et al. 2019](https://publications.gc.ca/site/eng/9.845487/publication.html) (see Table S4)
 
-```{r, fig.align="center", echo = FALSE,fig.width = 10, fig.height=7, fig.cap ="Figure 6. Commercial landings for species categories in NAFO 4X. Dotted line represents the long-term mean."}
+```{r, fig.align="center", echo = FALSE,fig.width = 10, fig.height=7, fig.cap ="Figure 6. Commercial landings collected from NAFO, ZIF and MARFIS databases for species categories in NAFO 4X. Dotted lines represent the long-term means."}
 
 dat.dir<-here::here("data")
 eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
@@ -379,18 +381,17 @@ mean_land_ind_4x <- land_ind_4x %>% group_by(name) %>% summarise(mn=mean(value),
       
 (pb1|pb2)/(pb3|pb4)
 
-
 ```
 
-- Commercial fisheries landings have generally been below the long-term average for the last 5 years.
+- Commercial fisheries landings for all four species groups have generally been below the long-term average for the last 5 years, with the excpetion of invertebrates.
 
 
 ## Habitat 
 
-
+*In development*
 
 ## Productivity 
-Productivity in an ecosystem relates to the amount of energy or biomass available to consumers in the ecosystem. 
+Productivity relates to the amount of energy or biomass generated in an ecosystem, providing energy to consumers.  
 
 ### Chlorophyll, Bloom Duration, *Calanus finmarchicus*,  Zooplankton Biomass
 
@@ -471,7 +472,7 @@ ph4<-ggplot(ZP_ind, aes(x = YEAR, y = Zooplankton_Biomass)) +
 
 ### Large Fish Indicator
 
-```{r fig.align="center", echo = FALSE,fig.width = 10, fig.height=7, fig.cap="Figure 9. Large fish indicator from RV survey data."}
+```{r fig.align="center", echo = FALSE,fig.width = 5, fig.height=4, fig.cap="Figure 9. Large fish indicator from RV survey data."}
 dat.dir<-here::here("data")
 eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
   load(file.path(dat.dir, eco_indicators_nafo))
@@ -499,20 +500,20 @@ pd
   
 ```
 
-## Biodiveristy 
-Biodiversity is described as the variety and variability among living organisms from all sources ([CBD](https://www.cbd.int/convention)). Biodiversity is linked to ecosystem resilience and plays an important role in maintaining functionality and productivity of ecosystems.
+## Biodiversity 
+Biodiversity is described as the variety and variability among living organisms from all sources ([CBD](https://www.cbd.int/convention)). It is linked to ecosystem resilience and plays an important role in maintaining functionality and productivity of ecosystems. Biodiversity can relate to genetic, species, guild and ecosystem diversity. 
 
-### Shannon Diveristy Index, Margalef Richness, Heips Evenness
+### Shannon Diversity Index, Margalef Richness, Heip's Evenness
 [Bundy et al. 2019](https://publications.gc.ca/site/eng/9.845487/publication.html) (see Table S4).
 
-Shannon diversity Index accounts for both abundance and evenness of species present in a community. Margalef Richness measures the number of species present accounting for sampling effects. Heips Evenness measures how equally the species richness contributes to the total abundance or biomass of the community.
+Shannon Diversity Index accounts for both abundance and evenness of species present in a community. Margalef Richness measures the number of species present accounting for sampling effects. Heips Evenness measures how equally the species richness contributes to the total abundance or biomass of the community. Due to improvements in species identification over time, long-term Shannon Diversity and Margalef richness can be misleading. Only years 2000-2020 were used here. 
 
-```{r fig.align="center", echo = FALSE,fig.width = 10, fig.height=7, fig.cap="Figure 9. Shannon Diveristy Index, Margalef Richness, Hieps Evenness measured from RV survey data."}
+```{r fig.align="center", echo = FALSE,fig.width = 10, fig.height=7, fig.cap="Figure 9. Shannon diversity Index, Margalef Richness, Hieps Evenness measured from data collected from DFO's Summer RV survey and has been corrected for catchability. Dotted lines denote long-term means."}
 dat.dir<-here::here("data")
 eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
   load(file.path(dat.dir, eco_indicators_nafo))
   
- ShannonDiveristy<-eco_indicators_nafo %>%
+ Shannondiversity<-eco_indicators_nafo %>%
   filter(ID=="4X", YEAR<2021 & YEAR>2000)%>%
         select(YEAR, ShannonDiversity_ALL)
  
@@ -525,11 +526,11 @@ eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
         select(YEAR, MargalefRichness_ALL)
   
     
-  mean_ShannonD <- ShannonDiveristy %>% summarise(mn=mean(ShannonDiversity_ALL))
+  mean_ShannonD <- Shannondiversity %>% summarise(mn=mean(ShannonDiversity_ALL))
    mean_Heips <- Heips %>% summarise(mn=mean(Heips_ALL))
     mean_Margalef <- Margalef %>% summarise(mn=mean(MargalefRichness_ALL))
   
-  pj1<-ggplot(ShannonDiveristy, aes(x = YEAR, y = ShannonDiversity_ALL)) +
+  pj1<-ggplot(Shannondiversity, aes(x = YEAR, y = ShannonDiversity_ALL)) +
   theme_classic()+
   geom_line(color="turquoise",size=1)+
   labs(y="Shannon Diversity")+
@@ -562,14 +563,13 @@ pj2<-ggplot(Heips, aes(x = YEAR, y = Heips_ALL)) +
 (pj1|pj3)/(pj2)
   
 ```
-
-- Shannon Diveristy and Margalef Richness increase over time as new species are identified in the RV Surveys. Relative stability of Margalef Richness in recent years, but declines in latest year for diversity and evennnes.
-
+ 
+- There is relative stability of Margalef Richness in the last 5 years, but declines in latest year for Shannon Diversity and Heip's evenness.
 
 ### Guild-level Biomass
 Guild-level biomasses address structural attributes of food webs, and can also serve as proxies for ecosystem functioning (Tam et al. 2017).This indicator includes multiple guilds for fish and invertebrates from the RV Survey.
 
-```{r fig.align="center", echo = FALSE,fig.width = 10, fig.height=7, fig.cap="Figure 10. Total Biomass and guild-level biomasses for fish and invertebrate catagories from RV survey data"}
+```{r fig.align="center", echo = FALSE,fig.width = 10, fig.height=7, fig.cap="Figure 10. Total Biomass and guild-level biomasses for fish and invertebrate catagories from DFO's Summer RV survey which have been corrected for catchability. Dotted lines denote long-term means."}
 dat.dir<-here::here("data")
 eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
   load(file.path(dat.dir, eco_indicators_nafo))
@@ -643,10 +643,13 @@ eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
   
 ```
 
-- 
+- Total biomass of commercial fish species are generally decreasing over the last 5 years, with both invertebrates and forage fish experiencing decreases in the most recent year. 
+- Gadoid biomass has varied around the long term mean since the 1970s, however have been generally decreasing since 2014. 
+- Forage fish have been declining over the last 5 year period and below the long-term mean. Biomass of forage fish is the lowest since the beginning of Summer RV survey records.
 
 ## Non-Target Species 
-- with data from mar.fleets we can start to get an idea of discards, observer coverage. 
+
+*In development*
 
 ```{r, echo=FALSE,message=FALSE, warning=FALSE, include=FALSE}
 
