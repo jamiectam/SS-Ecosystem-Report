@@ -3,9 +3,16 @@ title: " 2024 Ecosystem Summary Report pilot for 4X_V3"
 author: "Maritimes EBFM WG"
 date: "`r Sys.Date()`"
 output:
-  word_document:
-   reference_docx: MAR_Ecosystem_Report_style.docx
- 
+  pdf_document:
+    toc: true
+    toc_depth: 2
+    df_print: kable
+    highlight: haddock
+    latex_engine: xelatex
+linkcolor: blue    
+urlcolor: blue
+citecolor: red
+toccolor: blue
 ---
 
 ```{r setup, include=FALSE}
@@ -34,42 +41,28 @@ require(readr)
 require(DT)
 require (flextable)
 require (patchwork)
-require(marindicators)
 require(rmarkdown)
 require(bookdown)
 require (officedown)
+require(tinytex)
+require(officer)
 # install_github("jamiectam/MAReco")
 ```
+
+\newpage
 
 ```{r, echo = FALSE, out.width="75%", fig.align="center", fig.cap="NAFO Division 4x"}
 knitr::include_graphics(here("figures", "nafomap_4X.jpeg"))
 
 ```
 
-# Contents
-
-- [**Introduction**](#introduction)
-- [**Ecosystem Objectives**](#ecosystemobjectives)
-- [**A. Pressures and Stressors**](#pressuresandstressors)
-  - [Climate and Oceanography](#climate-and-oceanography)
-  - [Longer-term Climate Change](#longer-term-climate-change)
-- [**B. Ecological**](#ecological)
-  - [Commercial Fishing](#commercial-fishery)
-  - [Habitat](#habitat)
-  - [Productivity](#productivity)
-  - [Biodiversity](#biodiversity)
-  - [Non-Target Species](#non-target-species)
-- [**C. Economic**](#economic)
-
-\newpage
-
 # Introduction {#introduction}
 
-## About this report
+### About this report
 This Ecosystem Summary Report supports DFO's efforts to incorporate an ecosystem approaches into Fisheries Science and Resource Management in the Maritimes Region. The purpose of this report is to synthesize ecosystem information to inform an ecosystem approach, as highlighted in the modernized Fisheries Act ([2019; Bill C-68](https://lop.parl.ca/sites/PublicWebsite/default/en_CA/ResearchPublications/LegislativeSummaries/421C68E)). It aligns objectives broadly to those of the [Maritimes Ecosystem Based Management Framework](https://sites.google.com/view/ebminitiative/ebm-initiative-home), and regional/area-based objectives that contribute to Scientific Advice and Management Plans or other Harvest Strategies. This Ecosystem Report aims to support an integrative suite of ecosystem indicators relevant to a specific fisheries management area that can support DFO's Ecosystem Approaches to Fisheries Management ([EAFM](https://www.dfo-mpo.gc.ca/fisheries-peches/initiatives/ecosystems-approach-approche-ecosystemique/index-eng.html)) and Ecosystem Based Fisheries Management ([EBFM](https://sites.google.com/view/maritimesebfmwg/home)).
 
 
-## Report structure
+### Report structure
 This report outlines ecosystem objectives related to a specific management area (Table 1), and reviews relevant ecosystem indicator trends and the status of the most recent year(s) relative to a reference point (if available) or a long-term average. The results are synthesized to outline potential implications for the management area examined. Where relevant this document provides links to reports and resources for details and methodology. This report summarizes general ecosystem trends to support integration of ecosystem information and expertise into Science Advice (e.g. stock assessment) or Resource Management (e.g. Integrated Fisheries Management Plans), but is intended for a variety of users.
 
 This is a summary of the best available information describing the ecosystem specific to the management areas within the Maritimes Region.
@@ -88,18 +81,21 @@ dat.dir<-here::here("data")
 Ecosystem_Report_4x_objectives<- "Ecosystem_Report_4x_objectives.Rdata"
   load(file.path(dat.dir, Ecosystem_Report_4x_objectives))
   
-set_flextable_defaults(font.size = 9, padding = 1, na_str="na")
-options(flextable.print = Inf)
-
+# set_flextable_defaults(font.size = 9, padding = 1, na_str="na")
+# options(flextable.print = Inf)
+# 
 Table_01c<- as.data.frame(Ecosystem_Report_4X_objectives)
-
-ft_01<-flextable(Table_01c) %>%
-  theme_vanilla()%>%
-  merge_v(j= "Attribute")%>%
-  theme_booktabs(bold_header = TRUE) %>%
-   set_table_properties(layout = "autofit", width = 0.9)
-                        
-   ft_01        
+# 
+# ft_01<-flextable(Table_01c) %>%
+#   theme_vanilla()%>%
+#   merge_v(j= "Attribute")%>%
+#   theme_booktabs(bold_header = TRUE) %>%
+#    set_table_properties(layout = "autofit", width = 0.9)
+#                         
+#    ft_01        
+  ERtable<-kable(Table_01c) 
+  
+  ERtable
    
 ```
 
@@ -115,7 +111,8 @@ Air temperature in the 4X area (Yarmouth, NS) has been increasing at a rate of 1
 ### North Atlantic Oscillation Index
 [Hebert et al. 2024](https://publications.gc.ca/collections/collection_2024/mpo-dfo/Fs97-18-380-eng.pdf) (see Section 2.1)
 
-```{r,fig.align="center", echo = FALSE, out.width="60%", fig.cap="Figure 1. The North Atlantic Oscillation (NAO) index, defined as the winter (December, January, February, March) 500 mb pressure Principal Component Analysis which is representative of the difference between the Icelandic low and Azores high. Thick line is a 5-year moving average. Climatological mean is shown as the solid line. Dashed lines are ±0.5 standard deviation (SD)."}
+
+```{r,fig.align="center", echo = FALSE, out.width="60%",fig.pos='H', fig.cap="The North Atlantic Oscillation (NAO) index, defined as the winter (December, January, February, March) 500 mb pressure Principal Component Analysis which is representative of the difference between the Icelandic low and Azores high. Thick line is a 5-year moving average. Climatological mean is shown as the solid line. Dashed lines are ±0.5 standard deviation (SD)."}
 
 knitr::include_graphics(here("figures", "nao.png"))
 
@@ -129,7 +126,7 @@ knitr::include_graphics(here("figures", "nao.png"))
 ### Sea Surface Temperature Anomaly
 [Hebert et al. 2024](https://publications.gc.ca/collections/collection_2024/mpo-dfo/Fs97-18-380-eng.pdf) (see Section 3)
 
-```{r,fig.align="center", echo = FALSE,fig.width = 5, out.width="60%", fig.cap="Figure 2. The annual sea-surface-temperature normalized anomaly for NAFO 4X derived from satellite imagery compared to their long-term monthly means. Horizontal dashed lines represent plus or minus 0.5 SD for the 1991-2020 period. Regime shift analysis results from running the method forwards and backwards on the time series depicted by the blue and red horizontal lines, respectively. "}
+```{r,fig.align="center", echo = FALSE,fig.width = 5, out.width="60%", fig.cap="The annual sea-surface-temperature normalized anomaly for NAFO 4X derived from satellite imagery compared to their long-term monthly means. Horizontal dashed lines represent plus or minus 0.5 SD for the 1991-2020 period. Regime shift analysis results from running the method forwards and backwards on the time series depicted by the blue and red horizontal lines, respectively. "}
 
 knitr::include_graphics(here("figures", "sstSatelliteAnnualAnomaly_regimeShift_4XSS.png"))
 
@@ -141,7 +138,7 @@ knitr::include_graphics(here("figures", "sstSatelliteAnnualAnomaly_regimeShift_4
 ### Bottom Temperature Anomaly
 [Hebert et al. 2024](https://publications.gc.ca/collections/collection_2024/mpo-dfo/Fs97-18-380-eng.pdf) (see Section 8.2)
 
-```{r,fig.align="center", echo = FALSE, fig.width = 5, out.width="60%", fig.cap="Figure 3. Time series of July bottom-temperature anomalies (thin lines with circles) and five-year-running-mean filtered series (heavy line) for NAFO 4X The solid horizontal line is the 1991-2020 mean and dashed lines represent ±0.5 SD. Regime shift analysis results from running the method forwards and backwards on the time series depicted by the blue and red horizontal lines, respectively."}
+```{r,fig.align="center", echo = FALSE, fig.width = 5,fig.pos='H', out.width="60%", fig.cap="Time series of July bottom-temperature anomalies (thin lines with circles) and five-year-running-mean filtered series (heavy line) for NAFO 4X The solid horizontal line is the 1991-2020 mean and dashed lines represent ±0.5 SD. Regime shift analysis results from running the method forwards and backwards on the time series depicted by the blue and red horizontal lines, respectively."}
 
 knitr::include_graphics(here("figures", "annualAnomaly_regimeShift_4X.png"))
 
@@ -149,9 +146,10 @@ knitr::include_graphics(here("figures", "annualAnomaly_regimeShift_4X.png"))
 
 - The summer survey took place from 29 June to 14 August 2023. A total of 203 Conductivity-Temperature-Depth (CTD) stations were sampled. The survey covered part of Eastern Georges Bank (NAFO Division 5Ze), to the mouth of the Bay of Fundy (northwest portion of NAFO Division 4X), and spanned the entirety of the Scotian Shelf up to Cabot Strait (NAFO Divisions 4X, 4W, 4Vs, and 4Vn). The near-bottom temperature anomalies for 2023 were near normal on Eastern Georges Bank, to the mouth of the Bay of Fundy, and the western portion of 4X. On the eastern portion of 4X bottom temperatures were above normal. The anomaly varied for the NAFO Division was +0.3◦C (+0.3 SD) for 4X (the last two years were the warmest on record; 2012 was the record high) (Figure 31). All regions show elevated bottom temperatures since approximately year 2010.
 
+
 ### Sea Surface Temperature (SST), Bottom Temperature
 [Casault et al. 2024](https://publications.gc.ca/collections/collection_2024/mpo-dfo/Fs97-6-3589-eng.pdf) 
-```{r, fig.align="center", echo = FALSE,fig.width = 14, fig.cap="Figure 7. Sea Surface Temperature from satellite and Bottom temperature for 4X. Dotted lines denote the long-term mean."}
+```{r, fig.align="center", echo = FALSE,fig.width = 14, fig.pos='H',fig.cap="Sea Surface Temperature from satellite and Bottom temperature for 4X. Dotted lines denote the long-term mean."}
   
   azmpdata::Derived_Annual_Broadscale
 
@@ -170,6 +168,7 @@ mean_BottomT <- BottomT_ind_SS %>% summarise(mn=mean(Bottom_Temp, na.rm=TRUE))
 pc1<-ggplot(SST_ind_SS, aes(x = YEAR, y = SST)) +
   theme_classic()+
   geom_line( size=1)+
+  labs(x="")+
   # geom_smooth(method=glm, se=F)+
   geom_hline(data=mean_SST, aes(yintercept=mn), linetype='dotted')+
   annotate(geom = "rect",
@@ -181,6 +180,7 @@ pc2<-ggplot(BottomT_ind_SS, aes(x = YEAR, y = Bottom_Temp)) +
   theme_classic()+
   geom_line( size=1)+
   # geom_smooth(method=glm, se=F)+
+    labs(x="")+
   geom_hline(data=mean_BottomT, aes(yintercept=mn), linetype='dotted')+
   annotate(geom = "rect",
            xmin = 2016, xmax = 2020,
@@ -196,7 +196,7 @@ pc2<-ggplot(BottomT_ind_SS, aes(x = YEAR, y = Bottom_Temp)) +
 
 Ocean model long-term forecast and projections provide a general expectation of how the world may change. Ocean model projections use low and high emissions pathways as future scenarios to frame expectations of the future ocean climate.
 
-```{r,fig.align="center", echo = FALSE,fig.width = 8, out.width="80%", fig.cap="Figure 4. Future scenarios for sea surface temperature changes."}
+```{r,fig.align="center", echo = FALSE,fig.width = 8, out.width="80%",fig.pos='H', fig.cap="Future scenarios for sea surface temperature changes."}
 knitr::include_graphics(here("figures", "SSPs_2040P_change_annual.png"))
 ```
 
@@ -218,7 +218,7 @@ knitr::include_graphics(here("figures", "SSPs_2040P_change_annual.png"))
 
 This indicator measures the level of exploitation or total fishing pressure at the ecosystem level (Landings/Biomass). Change in this indicator can result from change in biomass, landings or both. 
 
-```{r ,fig.align="center", echo = FALSE,fig.width = 10, fig.height=7, fig.cap="Figure 5. Fishing pressure from 1970-2020 calculated from DFO Summer Research Vessel survey and has been corrected for catchability. Dotted lines denote long-term means."}
+```{r ,fig.align="center", echo = FALSE,fig.width = 10, fig.height=7,fig.pos='H', fig.cap="Fishing pressure from 1970-2020 calculated from DFO Summer Research Vessel survey and has been corrected for catchability. Dotted lines denote long-term means."}
 
 dat.dir<-here::here("data")
 eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
@@ -306,7 +306,7 @@ pa4<-ggplot(fp_inv, aes(x = YEAR, y = FP_INVERTEBRATES)) +
 ### Commercial Landings
 [Bundy et al. 2019](https://publications.gc.ca/site/eng/9.845487/publication.html) (see Table S4)
 
-```{r, fig.align="center", echo = FALSE,fig.width = 10, fig.height=7, fig.cap ="Figure 6. Commercial landings collected from NAFO, ZIF and MARFIS databases for species categories in NAFO 4X. Dotted lines represent the long-term means, grey areas are the latest 5 years of available data."}
+```{r, fig.align="center", echo = FALSE,fig.width = 10, fig.height=7, fig.pos='H',fig.cap ="Commercial landings collected from NAFO, ZIF and MARFIS databases for species categories in NAFO 4X. Dotted lines represent the long-term means, grey areas are the latest 5 years of available data."}
 
 dat.dir<-here::here("data")
 eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
@@ -399,12 +399,12 @@ mean_land_ind_4x <- land_ind_4x %>% group_by(name) %>% summarise(mn=mean(value),
 ## Productivity 
 Productivity relates to the amount of energy or biomass generated in an ecosystem, providing energy to consumers.  
 
-### Chlorophyll, Bloom_Start, Nitrate, *Calanus finmarchicus*,  Zooplankton Biomass
+### Nitrate, Chlorophyll, Bloom Start, *Calanus finmarchicus*,  Zooplankton Biomass
 [Casault et al. 2024](https://publications.gc.ca/collections/collection_2024/mpo-dfo/Fs97-6-3589-eng.pdf)
 
 A number of factors play a role in primary and secondary production. The amount of available nutrient supply for phytoplankton production is represented by surface (0-50 m) and subsurface (50-150 m) nutrient concentrations
 
-```{r fig.align="center", echo = FALSE,fig.width = 10, fig.height=10, fig.cap="Figure 8. Chlorophyll (surface) and Bloom Start,for the Western Scotian Shelf (including NAFO 4X and 5Y),  Nitrate 0-50m, Nitrate 50-150, from Browns Bank Line (BBL)  C.finmarchicus, and meso zooplankton biomass (dry weight), from NAFO 4X. Dotted lines denote long-term means, grey areas are the latest 5 years of available data. "}
+```{r fig.align="center", echo = FALSE,fig.width = 10, fig.height=10,fig.pos='H', fig.cap="Nitrate 0-50m, Nitrate 50-150, from Browns Bank Line (BBL), Chlorophyll (surface) and Bloom Start,for the Western Scotian Shelf (including NAFO 4X and 5Y), C.finmarchicus, and meso zooplankton biomass (dry weight), from NAFO 4X. Dotted lines denote long-term means, grey areas are the latest 5 years of available data. "}
 dat.dir<-here::here("data")
 AZMP_nutrients<- "AZMP_nutrients.Rdata"
   load(file.path(dat.dir, AZMP_nutrients))
@@ -526,7 +526,7 @@ ph6<-ggplot(ZP_ind, aes(x = YEAR, y = Zooplankton_Biomass)) +
 
 ### Large Fish Indicator (LFI)
 LFI is an estimate of the proportion of large fish in the community or proportion of biomass occupying the top predator trophic-level ([Greenstreet and Rogers 2006](https://academic.oup.com/icesjms/article/63/4/573/690519#139793319)). 
-```{r fig.align="center", echo = FALSE,fig.width = 5, fig.height=4, fig.cap="Figure 9. Large fish indicator from RV survey data. Dotted line denotes the long-term mean, grey area represents the most recent 5 years of available data."}
+```{r fig.align="center", echo = FALSE,fig.width = 5, fig.height=4,fig.pos='H', fig.cap="Large fish indicator from RV survey data. Dotted line denotes the long-term mean, grey area represents the most recent 5 years of available data."}
 dat.dir<-here::here("data")
 eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
   load(file.path(dat.dir, eco_indicators_nafo))
@@ -563,7 +563,7 @@ Biodiversity is described as the variety and variability among living organisms 
 
 Shannon Diversity Index accounts for both abundance and evenness of species present in a community. Margalef Richness measures the number of species present accounting for sampling effects. Heips Evenness measures how equally the species richness contributes to the total abundance or biomass of the community. Due to improvements in species identification over time, long-term Shannon Diversity and Margalef richness can be misleading. Only years 2000-2020 were used here. 
 
-```{r fig.align="center", echo = FALSE,fig.width = 10, fig.height=7, fig.cap="Figure 9. Shannon diversity Index, Margalef Richness, Hieps Evenness measured from data collected from DFO's Summer RV survey and has been corrected for catchability. Dotted lines denote long-term means."}
+```{r fig.align="center", echo = FALSE,fig.width = 10, fig.height=7,fig.pos='H', fig.cap="Shannon diversity Index, Margalef Richness, Hieps Evenness measured from data collected from DFO's Summer RV survey and has been corrected for catchability. Dotted lines denote long-term means."}
 dat.dir<-here::here("data")
 eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
   load(file.path(dat.dir, eco_indicators_nafo))
@@ -624,7 +624,7 @@ pj2<-ggplot(Heips, aes(x = YEAR, y = Heips_ALL)) +
 ### Guild-level Biomass
 Guild-level biomasses address structural attributes of food webs, and can also serve as proxies for ecosystem functioning (Tam et al. 2017).This indicator includes multiple guilds for fish and invertebrates from the RV Survey.
 
-```{r fig.align="center", echo = FALSE,fig.width = 10, fig.height=7, fig.cap="Figure 10. Total Biomass and guild-level biomasses for fish catagories from DFO's Summer RV survey which have been corrected for catchability. Invertebrate estimates are not corrected for catchability. Dotted lines denote long-term means, grey areas represent the last 5 years of available data."}
+```{r fig.align="center", echo = FALSE,fig.width = 10, fig.height=7,fig.pos='H', fig.cap="Total Biomass and guild-level biomasses for fish catagories from DFO's Summer RV survey which have been corrected for catchability. Invertebrate estimates are not corrected for catchability. Dotted lines denote long-term means, grey areas represent the last 5 years of available data."}
 dat.dir<-here::here("data")
 eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
   load(file.path(dat.dir, eco_indicators_nafo))
@@ -718,7 +718,7 @@ eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
 
 ### Landed value (CAD) by species catagory
 
-```{r fig.align="center", echo = FALSE,fig.width = 10, fig.cap="Figure 10. Landed value of species categories since 1990 for NAFO 4X. Area in red is preliminary data (2021-2023) and subject to change." }
+```{r fig.align="center", echo = FALSE,fig.width = 10,fig.pos='H', fig.cap="Landed value of species categories since 1990 for NAFO 4X. Area in red is preliminary data (2021-2023) and subject to change." }
 MAR_Landings_Value_sp.Rdata<- "MAR_Landings_Value_sp.Rdata"
   load(file.path(dat.dir, MAR_Landings_Value_sp.Rdata))
   
