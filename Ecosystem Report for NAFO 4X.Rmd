@@ -101,7 +101,7 @@ Table_01<- as.data.frame(Ecosystem_Report_4X_objectives)
 # A. Pressures and Stressors {#pressuresandstressors}
 
 ## Climate and oceanography 
-The 4X area is strongly influenced by natural variability of the climate system (e.g., North Atlantic Oscillation) and, therefore, long-term monitoring is needed to determine how anthropogenic climate change is affecting ocean temperatures. The NAO index has been mostly positive for the last decade, which favours warm, salty conditions in 4X (Petrie, 2007). 
+The 4X area is strongly influenced by natural variability of the climate system (e.g., North Atlantic Oscillation) and, therefore, long-term monitoring is needed to determine how anthropogenic climate change is affecting ocean temperatures. The NAO index has been mostly positive for the last decade, which favours warm, salty conditions in 4X ([Petrie 2007](https://www.tandfonline.com/doi/abs/10.3137/ao.450302)). 
 
 Air temperature in the 4X area (Yarmouth, NS) has been increasing at a rate of 1.2°C/century. The sea surface temperature in the 4X area has been warming at a rate of about 0.5°C/decade over the last 40 years. The last two years reported by AZMP (2021-2022) were the two warmest years in 4X since the start of observations. 
 
@@ -115,7 +115,7 @@ knitr::include_graphics(here("figures", "nao.png"))
 
 ```
 
-- In 2023, the winter (December–March) North Atlantic Oscillation (NAO) index was below the 1991 – 2020 mean, –0.31 (–0.84 SD; \@ref(fig:nafo4xNAO)). A high NAO index corresponds to an intensification of the pressure difference between the Icelandic Low and the Azores High. Strong northwest winds, cold air and sea temperatures, and heavy ice in the Labrador Sea and on the NL shelf areas, are usually associated with a high positive NAO index ([Colbourne et al. 1994](https://www.researchgate.net/profile/E-Colbourne-2/publication/281064239_Climatic_changes_and_environmental_conditions_in_the_Northwest_Atlantic_1970-1993/links/55d31fc508aec1b0429f2dee/Climatic-changes-and-environmental-conditions-in-the-Northwest-Atlantic-1970-1993.pdf); Drinkwater 1996). The opposite response occurs during years with a negative NAO index.
+- In 2023, the winter (December–March) North Atlantic Oscillation (NAO) index was below the 1991 – 2020 mean, –0.31 (–0.84 SD). A high NAO index corresponds to an intensification of the pressure difference between the Icelandic Low and the Azores High. Strong northwest winds, cold air and sea temperatures, and heavy ice in the Labrador Sea and on the NL shelf areas, are usually associated with a high positive NAO index ([Colbourne et al. 1994](https://www.researchgate.net/profile/E-Colbourne-2/publication/281064239_Climatic_changes_and_environmental_conditions_in_the_Northwest_Atlantic_1970-1993/links/55d31fc508aec1b0429f2dee/Climatic-changes-and-environmental-conditions-in-the-Northwest-Atlantic-1970-1993.pdf); Drinkwater 1996). The opposite response occurs during years with a negative NAO index.
 
 - The NAO has been shown to strongly affect bottom temperature distributions throughout the region from the Labrador Shelf to the Gulf of Maine ([Petrie 2007](https://www.tandfonline.com/doi/abs/10.3137/ao.450302)). The response is bimodal, the product of direct and advective effects, with positive (negative) NAO generally corresponding to colder- (warmer-) than-normal bottom temperatures over the Labrador-Newfoundland Shelf, the Gulf of St. Lawrence, and the Eastern Scotian Shelf, and warmer- (colder-) than-normal conditions on the Central and Western Scotian Shelf and in the Gulf of Maine. 
 
@@ -146,7 +146,7 @@ knitr::include_graphics(here("figures", "annualAnomaly_regimeShift_4X.png"))
 
 ### Sea Surface Temperature (SST), Bottom Temperature
 [Casault et al. 2024](https://publications.gc.ca/collections/collection_2024/mpo-dfo/Fs97-6-3589-eng.pdf) 
-```{r nafo4xSSTBT, fig.align="center", echo = FALSE,fig.width = 14, fig.pos='H',fig.cap="Sea Surface Temperature from satellite and Bottom temperature for 4X. Dotted lines denote the long-term mean."}
+```{r nafo4xSSTBT, fig.align="center", echo = FALSE,fig.width = 14, fig.pos='H',fig.cap="Sea Surface Temperature and Bottom temperature from fixed stations for 4X. Dotted lines denote the long-term mean."}
   
   azmpdata::Derived_Annual_Broadscale
 
@@ -296,7 +296,7 @@ pa4<-ggplot(fp_inv, aes(x = YEAR, y = FP_INVERTEBRATES)) +
 
 ```
 
-- The latest robust estimates of overall fishing pressure in 4X (2020) has been below the long-term average since around 2005, but increased to above average in 2019. This is due to fishing pressure on forage fish in the area which has been steadily increasing between 2016-2020 and is above the long-term average. This is likely influenced primarily by low biomass estimates for forage fish during this period (Figure 10) since landings have not increased (Figure 6). 
+- The latest robust estimates of overall fishing pressure in 4X (2020) has been below the long-term average since around 2005, but increased to above average in 2019. This is due to fishing pressure on forage fish in the area which has been steadily increasing between 2016-2020 and is above the long-term average. This is likely influenced primarily by low biomass estimates for forage fish during this period (Figure 12) since landings have not increased (Figure 8). 
 
 - Fishing pressure on gadoids and invertebrates have been below the long term mean since the late 1990s and late 2000s, respectively.
 
