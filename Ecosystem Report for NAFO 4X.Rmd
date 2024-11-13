@@ -81,7 +81,11 @@ Ecosystem_Report_4x_objectives<- "Ecosystem_Report_4x_objectives.Rdata"
 # set_flextable_defaults(font.size = 9, padding = 1, na_str="na")
 # options(flextable.print = Inf)
 # 
-Table_01<- as.data.frame(Ecosystem_Report_4X_objectives)
+Table_EO<- as.data.frame(Ecosystem_Report_4X_objectives)
+
+#change variable in the table
+# Table_EO <- Table_EO%>%
+#   mutate(Indicators = if_else(`Management Component` == "Non-Target species", "Commercial effort", Indicators))
 # 
 # ft_01<-flextable(Table_01c) %>%
 #   theme_vanilla()%>%
@@ -90,7 +94,7 @@ Table_01<- as.data.frame(Ecosystem_Report_4X_objectives)
 #    set_table_properties(layout = "autofit", width = 0.9)
 #                         
 #    ft_01        
-  ERtable<-kable(Table_01) 
+  ERtable<-kable(Table_EO) 
   
   ERtable
    
@@ -123,19 +127,21 @@ knitr::include_graphics(here("figures", "nao.png"))
 ### Sea Surface Temperature Anomaly
 [Hebert et al. 2024](https://publications.gc.ca/collections/collection_2024/mpo-dfo/Fs97-18-380-eng.pdf) (see Section 3)
 
-```{r nafo4xSSTanomaly,fig.align="center", echo = FALSE,fig.width = 5, out.width="60%", fig.cap="The annual sea-surface-temperature normalized anomaly for NAFO 4X derived from satellite imagery compared to their long-term monthly means. Horizontal dashed lines represent plus or minus 0.5 SD for the 1991-2020 period. Regime shift analysis results from running the method forwards and backwards on the time series depicted by the blue and red horizontal lines, respectively. "}
+```{r nafo4xSSTanomaly,fig.show='hold',fig.align="center", echo = FALSE,fig.width = 5, out.width="50%", fig.cap="The annual sea-surface-temperature normalized anomaly for NAFO 4X eastern Gulf of Maine Bay of Fundy (top plot), and NAFO 4X (bottom plot) derived from satellite imagery compared to their long-term monthly means. Horizontal dashed lines represent plus or minus 0.5 SD for the 1991-2020 period. Regime shift analysis results from running the method forwards and backwards on the time series depicted by the blue and red horizontal lines, respectively. "}
 
-knitr::include_graphics(here("figures", "sstSatelliteAnnualAnomaly_regimeShift_4XSS.png"))
+knitr::include_graphics(here("figures", c("sstSatelliteAnnualAnomaly_regimeShift_4XeGoM+BoF.png","sstSatelliteAnnualAnomaly_regimeShift_4XSS.png")))
+
 
 ```
 
-- The annual anomalies during 2023 was  +1.1◦C (+1.5 SD) in eastern Gulf of Maine/Bay of Fundy and x.x ◦C (x.x SD) in 4X on the Scotian Shelf. SST remained above normal, with the last three years being the three warmest years in 4XSS. NAFO division 4X eastern Gulf of Maine/Bay of Fundy remained above normal, but was cooler than the previous two years. A regime shift algorithm to detect a step change using mean levels was applied to the annual time-series (Rodionov 2004). Over the length of the record, the temperature has three distinct periods at all regions, a relatively cooler period from 1982 to 1993, near the climatological mean from 1994 to 2011, and a relatively warmer period from 2012 to present.
+- The annual anomalies during 2023 was  +1.1◦C (+1.5 SD) in eastern Gulf of Maine/Bay of Fundy and +0.8 ◦C (+1.0 SD) in 4X on the Scotian Shelf. SST remained above normal, with the last three years being the three warmest years in 4XSS. NAFO division 4X eastern Gulf of Maine/Bay of Fundy remained above normal, but was cooler than the previous two years. A regime shift algorithm to detect a step change using mean levels was applied to the annual time-series (Rodionov 2004). Over the length of the record, the temperature has three distinct periods at all regions, a relatively cooler period from 1982 to 1993, near the climatological mean from 1994 to 2011, and a relatively warmer period from 2012 to present.
 
 
 ### Bottom Temperature Anomaly
 [Hebert et al. 2024](https://publications.gc.ca/collections/collection_2024/mpo-dfo/Fs97-18-380-eng.pdf) (see Section 8.2)
 
 ```{r nafo4xBTanomaly,fig.align="center", echo = FALSE, fig.width = 5,fig.pos='H', out.width="60%", fig.cap="Time series of July bottom-temperature anomalies (thin lines with circles) and five-year-running-mean filtered series (heavy line) for NAFO 4X The solid horizontal line is the 1991-2020 mean and dashed lines represent ±0.5 SD. Regime shift analysis results from running the method forwards and backwards on the time series depicted by the blue and red horizontal lines, respectively."}
+
 
 knitr::include_graphics(here("figures", "annualAnomaly_regimeShift_4X.png"))
 
@@ -164,6 +170,7 @@ mean_BottomT <- BottomT_ind_SS %>% summarise(mn=mean(Bottom_Temp, na.rm=TRUE))
 
 pc1<-ggplot(SST_ind_SS, aes(x = YEAR, y = SST)) +
   theme_classic()+
+  geom_point()+
   geom_line( size=1)+
   labs(x="")+
   # geom_smooth(method=glm, se=F)+
@@ -175,6 +182,7 @@ pc1<-ggplot(SST_ind_SS, aes(x = YEAR, y = SST)) +
 
 pc2<-ggplot(BottomT_ind_SS, aes(x = YEAR, y = Bottom_Temp)) +
   theme_classic()+
+  geom_point()+
   geom_line( size=1)+
   # geom_smooth(method=glm, se=F)+
     labs(x="")+
@@ -642,8 +650,8 @@ eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
         select(YEAR, BIOMASS_INVERTEBRATES)
   
     bio_for_4x<-eco_indicators_nafo %>%
-  filter(ID=="4X", YEAR<2021 )%>%
-        select(YEAR, BIOMASS_FORAGE)
+  dplyr::filter(ID=="4X", YEAR<2021 )%>%
+      dplyr::  select(YEAR, BIOMASS_FORAGE)
     
       bio_gad_4x<-eco_indicators_nafo %>%
   filter(ID=="4X", YEAR<2021 )%>%
@@ -667,6 +675,7 @@ eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
            ymin = -Inf, ymax = Inf,
            fill = "grey", alpha = 0.2)
   
+
   pi2<-ggplot(bio_inv_4x, aes(x = YEAR, y = BIOMASS_INVERTEBRATES)) +
   theme_classic()+
   geom_line(size=1)+
@@ -709,17 +718,123 @@ eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
 
 *In development*
 
-```{r, echo=FALSE,message=FALSE, warning=FALSE, include=FALSE}
+[Yin et al. 2024](https://academic.oup.com/icesjms/advance-article/doi/10.1093/icesjms/fsae110/7758941)
 
-#stuff from Mar.fleets
+### Commercial effort by Species groups
+```{r fig.align="center", echo = FALSE,fig.width = 10, fig.height=7,fig.pos='H', fig.cap="Commercial effort for different species or species groups in NAFO 4X."}
+dat.dir<-here::here("data")
+commercial_effort_4X<- "commercial_effort_4X.Rdata"
+  load(file.path(dat.dir, commercial_effort_4X))
+  
+CEspp_4X<-commercial_effort_4X |>
+          select(YEAR, SPECIES, n) |>
+          drop_na()|>
+          group_by(YEAR, SPECIES) |>
+          summarise(number=sum(n))|>
+          filter(YEAR>2002)
+         
+CEspp_4X_w<-CEspp_4X |>
+            pivot_wider(names_from = SPECIES, values_from= number)
+
+CEspp_4X_y<-CEspp_4X |>
+            pivot_wider(names_from = YEAR, values_from= number)
+
+
+Total_CE<-commercial_effort_4X|>
+          select(YEAR, n) |>
+          drop_na()|>
+          group_by(YEAR)|>
+          summarise(total_CE=sum(n))|>
+          filter(YEAR>2002)
+          
+Groundfish_CE<-CEspp_4X_w |>
+              select(`GROUNDFISH, UNSPECIFIED`)
+
+lobster_CE<- CEspp_4X_w |>
+            select(LOBSTER, `LOBSTER - GREY ZONE`)
+
+top_CE<-CEspp_4X_w |> 
+        select(`GROUNDFISH, UNSPECIFIED`, LOBSTER, HERRING, `SCALLOP, SEA`, `SEA CUCUMBER`)
+
+alltop_CE<-left_join(top_CE, Total_CE) |>
+            pivot_longer(c(`GROUNDFISH, UNSPECIFIED`, LOBSTER, HERRING, `SCALLOP, SEA`, `SEA CUCUMBER`, `total_CE`))
+
+  pq1<-ggplot(alltop_CE, aes(x = YEAR, y = value, color = name)) +
+  theme_classic()+
+     # theme(legend.position = c(0.6, 0.9), legend.text=element_text(size=8))+
+    # scale_color_discrete(name="name", labels=c("All", "Forage", "Gadoids", "Inverts"))+
+  geom_line(size=1)+
+  labs(y="Number of Trips")+
+  guides(color = guide_legend(title = ""))+
+  # geom_hline(data=mean_bio_ind_4x, aes(yintercept=mean_bio, col=name), linetype='dotted')+
+  annotate(geom = "rect",
+           xmin = 2020, xmax = 2024,
+           ymin = -Inf, ymax = Inf,
+           fill = "grey", alpha = 0.2)
+pq1
 ```
 
+### Commercial effort by Gear types
+```{r fig.align="center", echo = FALSE,fig.width = 10, fig.height=7,fig.pos='H', fig.cap="Commercial effort for gear types in NAFO 4X."}
+dat.dir<-here::here("data")
+commercial_effort_4X<- "commercial_effort_4X.Rdata"
+  load(file.path(dat.dir, commercial_effort_4X))
+  
+CEgear_4X<-commercial_effort_4X |>
+          select(YEAR, GEAR_CODE, n) |>
+          drop_na()|>
+          group_by(YEAR, GEAR_CODE) |>
+          summarise(number=sum(n))|>
+          filter(YEAR>2002)
+         
+CEgear_4X_w<-CEgear_4X |>
+            pivot_wider(names_from = GEAR_CODE, values_from= number)
+
+CEgear_4X_y<-CEgear_4X |>
+            pivot_wider(names_from = YEAR, values_from= number)
+
+
+Total_CE<-commercial_effort_4X|>
+          select(YEAR, n) |>
+          drop_na()|>
+          group_by(YEAR)|>
+          summarise(total_CE=sum(n))|>
+          filter(YEAR>2002)
+          
+# groundfish_CE<-CEspp_4X_w |>
+#               select(`GROUNDFISH, UNSPECIFIED`)
+# 
+# lobster_CE<- CEspp_4X_w |>
+#             select(LOBSTER, `LOBSTER - GREY ZONE`)
+
+top_CEgear<-CEgear_4X_w |> 
+        select("71", "12", "51", "41", "62")
+
+alltop_CEgear<-left_join(top_CEgear, Total_CE) |>
+            pivot_longer(c("71", "12", "51", "41", "62", "total_CE"))
+
+  pq2<-ggplot(alltop_CEgear, aes(x = YEAR, y = value, color = name)) +
+  theme_classic()+
+     # theme(legend.position = c(0.6, 0.9), legend.text=element_text(size=8))+
+    # scale_color_discrete(name="name", labels=c("All", "Forage", "Gadoids", "Inverts"))+
+  geom_line(size=1)+
+  labs(y="Number of Trips")+
+  guides(color = guide_legend(title = ""))+
+  # geom_hline(data=mean_bio_ind_4x, aes(yintercept=mean_bio, col=name), linetype='dotted')+
+  annotate(geom = "rect",
+           xmin = 2020, xmax = 2024,
+           ymin = -Inf, ymax = Inf,
+           fill = "grey", alpha = 0.2)
+pq2
+```
 
 # C. Economic {#economic}
 
 ## Commerical Fishery
 
 ### Landed value (CAD) by species catagory
+
+This is the landed value of groups of species for the NAFO 4X region. Exploration of this data was based on published overviews of Canadian [Seafisheries landings](https://www.dfo-mpo.gc.ca/stats/commercial/sea-maritimes-eng.htm).
 
 ```{r fig.align="center", echo = FALSE,fig.width = 10,fig.pos='H', fig.cap="Landed value of species categories since 1990 for NAFO 4X. Area in red is preliminary data (2021-2023) and subject to change." }
 MAR_Landings_Value_sp.Rdata<- "MAR_Landings_Value_sp.Rdata"
