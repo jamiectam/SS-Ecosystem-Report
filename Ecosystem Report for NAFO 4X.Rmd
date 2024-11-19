@@ -43,7 +43,8 @@ require(bookdown)
 require (officedown)
 require(tinytex)
 require(officer)
-# install_github("jamiectam/MAReco")
+require(devtools)
+install_github("jamiectam/MAReco")
 ```
 
 \newpage
@@ -229,7 +230,7 @@ dat.dir<-here::here("data")
 eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
   load(file.path(dat.dir, eco_indicators_nafo))
   
-
+#filter relevant data sets
 fp_all<-eco_indicators_nafo %>%
   filter(ID=="4X", YEAR<2021)%>%
         select(YEAR,FP_ALL)
@@ -246,59 +247,15 @@ fp_inv<-eco_indicators_nafo %>%
   filter(ID=="4X", YEAR<2021)%>%
         select(YEAR,FP_INVERTEBRATES) #filter weird FP_invert value for 2021=166 all biomass estimates are low so filtered 2021 out
 
-mean_fp_all <- fp_all %>% summarise(mn=mean(FP_ALL))
-mean_fp_forage <- fp_forage %>% summarise(mn=mean(FP_FORAGE))
-mean_fp_gadoids <- fp_gadoids %>% summarise(mn=mean(FP_GADOIDS))
-mean_fp_inv <- fp_inv %>% summarise(mn=mean(FP_INVERTEBRATES, na.rm=TRUE))
 
-pa1<-ggplot(fp_all, aes(x = YEAR, y = FP_ALL)) +
-  theme_classic()+
-  geom_line(color="darkgreen", size=1)+
-  # geom_smooth(method=glm)+
-   # guides(color = guide_legend(title = "Fishing Pressure"))+
-  labs(x="", y="All fishing pressure")+
-  geom_hline(data=mean_fp_all, aes(yintercept=mn), linetype='dotted')+
-  annotate(geom = "rect",
-           xmin = 2016, xmax = 2020,
-           ymin = -Inf, ymax = Inf,
-           fill = "grey", alpha = 0.2)
+pa1<-plot_indicator(fp_all, YEAR, FP_ALL, y_label="All Fishing Pressure")
 
-pa2<-ggplot(fp_forage, aes(x = YEAR, y = FP_FORAGE)) +
-  theme_classic()+
-  geom_line(size=1)+
-  # geom_smooth(method=glm)+
-   # guides(color = guide_legend(title = "Fishing Pressure"))+
-  labs(x="", y="Forage fish fishing pressure")+
-  geom_hline(data=mean_fp_forage, aes(yintercept=mn), linetype='dotted')+
-  annotate(geom = "rect",
-           xmin = 2016, xmax = 2020,
-           ymin = -Inf, ymax = Inf,
-           fill = "grey", alpha = 0.2)
+pa2<-plot_indicator(fp_forage, YEAR, FP_FORAGE, y_label="Forage Fishing Pressure")
+  
+pa3<-plot_indicator(fp_gadoids, YEAR, FP_GADOIDS, y_label="Gadoid Fishing Pressure")
 
-pa3<-ggplot(fp_gadoids, aes(x = YEAR, y = FP_GADOIDS)) +
-  theme_classic()+
-  geom_line(size=1)+
-  # geom_smooth(method=glm)+
-   # guides(color = guide_legend(title = "Fishing Pressure"))+
-  labs(x="", y="Gadoid fishing pressures")+
- geom_hline(data=mean_fp_gadoids, aes(yintercept=mn), linetype='dotted')+
-  annotate(geom = "rect",
-           xmin = 2016, xmax = 2020,
-           ymin = -Inf, ymax = Inf,
-           fill = "grey", alpha = 0.2)
+pa4<-plot_indicator(fp_inv, YEAR, FP_INVERTEBRATES, y_label="Invertebrate Fishging Pressure")
  
-
-pa4<-ggplot(fp_inv, aes(x = YEAR, y = FP_INVERTEBRATES)) +
-  theme_classic()+
-  geom_line( size=1)+
-  # geom_smooth(method=glm)+
-   # guides(color = guide_legend(title = "Fishing Pressure"))+
-  labs(x="", y="Invertebrate fishing pressure")+
-  geom_hline(data=mean_fp_inv, aes(yintercept=mn), linetype='dotted')+
-  annotate(geom = "rect",
-           xmin = 2016, xmax = 2020,
-           ymin = -Inf, ymax = Inf,
-           fill = "grey", alpha = 0.2)
 
 (pa1|pa2)/(pa3|pa4)
 
