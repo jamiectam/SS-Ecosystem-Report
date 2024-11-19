@@ -301,7 +301,7 @@ pb3<-plot_indicator(land_for_4x, YEAR, landings_FORAGE.L, y_label="Forage fish l
 pb4<-plot_indicator(land_gad_4x, YEAR, landings_GADOIDS.L, y_label="Gadoid landings (kg)")
 
       
-pb1/(pb2|pb3|pb4)
+(pb1)/(pb2|pb3|pb4)
 
 ```
 
@@ -419,41 +419,14 @@ eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
   Margalef<-eco_indicators_nafo %>%
   filter(ID=="4X", YEAR<2021 & YEAR>2000)%>%
         select(YEAR, MargalefRichness_ALL)
-  
-    
-  mean_ShannonD <- Shannondiversity %>% summarise(mn=mean(ShannonDiversity_ALL))
-   mean_Heips <- Heips %>% summarise(mn=mean(Heips_ALL))
-    mean_Margalef <- Margalef %>% summarise(mn=mean(MargalefRichness_ALL))
-  
-  pj1<-ggplot(Shannondiversity, aes(x = YEAR, y = ShannonDiversity_ALL)) +
-  theme_classic()+
-  geom_line(color="turquoise",size=1)+
-  labs(y="Shannon Diversity")+
-  geom_hline(data=mean_ShannonD, aes(yintercept=mn), linetype='dotted')+
-  annotate(geom = "rect",
-           xmin = 2016, xmax = 2020,
-           ymin = -Inf, ymax = Inf,
-           fill = "grey", alpha = 0.2)
-  
-pj2<-ggplot(Heips, aes(x = YEAR, y = Heips_ALL)) +
-  theme_classic()+
-  geom_line(color="coral", size=1)+
-  labs(y="Heips Evenness")+
-  geom_hline(data=mean_Heips, aes(yintercept=mn), linetype='dotted')+
-  annotate(geom = "rect",
-           xmin = 2016, xmax = 2020,
-           ymin = -Inf, ymax = Inf,
-           fill = "grey", alpha = 0.2)
 
-  pj3<-ggplot(Margalef, aes(x = YEAR, y = MargalefRichness_ALL)) +
-  theme_classic()+
-  geom_line(color="green", size=1)+
-  labs(y="Margalef Richness")+
-  geom_hline(data=mean_Margalef, aes(yintercept=mn), linetype='dotted')+
-  annotate(geom = "rect",
-           xmin = 2016, xmax = 2020,
-           ymin = -Inf, ymax = Inf,
-           fill = "grey", alpha = 0.2)
+  
+  pj1<-plot_indicator(Shannondiversity, YEAR, ShannonDiversity_ALL, y_label="Shannon Diversity")
+  pj2<-plot_indicator(Heips, YEAR, Heips_ALL, y_label="Heips") 
+
+
+  pj3<-plot_indicator(Margalef, YEAR, MargalefRichness_ALL, y_label= "Margalef Richness") 
+
   
 (pj1|pj3)/(pj2)
   
@@ -489,56 +462,17 @@ eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
   filter(ID=="4X", YEAR<2021 )%>%
         select(YEAR, BIOMASS_GADOIDS)
     
-  mean_bio_ind_4x <- bio_ind_4x %>% group_by(name) %>% summarise(mean_bio=mean(value))
-  mean_bio_inv_4x <- bio_inv_4x %>% summarise(mn=mean(BIOMASS_INVERTEBRATES))
-  mean_bio_for_4x <- bio_for_4x %>% summarise(mn=mean(BIOMASS_FORAGE))
-  mean_bio_gad_4x <- bio_gad_4x %>% summarise(mn=mean(BIOMASS_GADOIDS))
-  
-  pi1<-ggplot(bio_ind_4x, aes(x = YEAR, y = value, color = name)) +
-  theme_classic()+
-     theme(legend.position = c(0.6, 0.9), legend.text=element_text(size=8))+
-    scale_color_discrete(name="name", labels=c("All", "Forage", "Gadoids", "Inverts"))+
-  geom_line(size=1)+
-  labs(y="Biomass (t)")+
-  guides(color = guide_legend(title = ""))+
-  # geom_hline(data=mean_bio_ind_4x, aes(yintercept=mean_bio, col=name), linetype='dotted')+
-  annotate(geom = "rect",
-           xmin = 2016, xmax = 2020,
-           ymin = -Inf, ymax = Inf,
-           fill = "grey", alpha = 0.2)
-  
 
-  pi2<-ggplot(bio_inv_4x, aes(x = YEAR, y = BIOMASS_INVERTEBRATES)) +
-  theme_classic()+
-  geom_line(size=1)+
-  labs(y="Invertebrate Biomass (t)")+
-  geom_hline(data=mean_bio_inv_4x, aes(yintercept=mn), linetype='dotted')+
-  annotate(geom = "rect",
-           xmin = 2016, xmax = 2020,
-           ymin = -Inf, ymax = Inf,
-           fill = "grey", alpha = 0.2)
   
-    pi3<-ggplot(bio_for_4x, aes(x = YEAR, y = BIOMASS_FORAGE)) +
-  theme_classic()+
-  geom_line(size=1)+
-  labs(y="Forage fish Biomass (t)")+
-  geom_hline(data=mean_bio_for_4x, aes(yintercept=mn), linetype='dotted')+
-  annotate(geom = "rect",
-           xmin = 2016, xmax = 2020,
-           ymin = -Inf, ymax = Inf,
-           fill = "grey", alpha = 0.2)
+  pi1<-plot_multiple_indicators(bio_ind_4x, YEAR, value, name, y_label = "Biomass (t)", legend_labels = c("All", "Forage", "Gadoids", "Inverts"))
+ 
+  pi2<-plot_indicator(bio_inv_4x, YEAR, BIOMASS_INVERTEBRATES, y_label= "Invertebrate Biomass (t)") 
+  
+  pi3<-plot_indicator(bio_for_4x, YEAR, BIOMASS_FORAGE, y_label= "Forage Fish Biomass (t)") 
     
-    pi4<-ggplot(bio_gad_4x, aes(x = YEAR, y = BIOMASS_GADOIDS)) +
-  theme_classic()+
-  geom_line(size=1)+
-  labs(y="Gadoid Biomass (t)")+
-  geom_hline(data=mean_bio_gad_4x, aes(yintercept=mn), linetype='dotted')+
-  annotate(geom = "rect",
-           xmin = 2016, xmax = 2020,
-           ymin = -Inf, ymax = Inf,
-           fill = "grey", alpha = 0.2)
+    pi4<-plot_indicator(bio_gad_4x, YEAR, BIOMASS_GADOIDS, y_label= "Gadoid Biomass (t)") 
       
-(pi1|pi2)/(pi3|pi4)
+(pi1)/(pi2|pi3|pi4)
   
 ```
 
