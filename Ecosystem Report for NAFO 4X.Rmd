@@ -292,62 +292,16 @@ land_inv_4x<-eco_indicators_nafo %>%
   filter(ID=="4X" )%>%
         select(YEAR, landings_GADOIDS.L)
 
-mean_land_ind_4x <- land_ind_4x %>% group_by(name) %>% summarise(mn=mean(value), na.rm=TRUE)
-  mean_land_inv_4x <- land_inv_4x %>% summarise(mn=mean(landings_INVERTEBRATES.L))
-  mean_land_for_4x <- land_for_4x %>% summarise(mn=mean(landings_FORAGE.L))
-  mean_land_gad_4x <- land_gad_4x %>% summarise(mn=mean(landings_GADOIDS.L))
+pb1<-plot_multiple_indicators(land_ind_4x, YEAR, value, name, y_label = "Landings (kg)", legend_labels = c("All", "Forage", "Gadoids", "Inverts"))
 
-#to add SDs
-# sd_land_ind_4x <- land_ind_4x %>% group_by(name) %>% summarise (sd_land = sd(value, na.rm=TRUE))
-# meanSD<- left_join(mean_land_ind_4x, sd_land_ind_4x) %>% mutate(upper=mean_land+sd_land) %>% mutate(lower=mean_land-sd_land)
-  
-  pb1<-ggplot(land_ind_4x, aes(x = YEAR, y = value, color = name)) +
-  theme_classic()+
-    theme(legend.position = c(0.77, 0.9), legend.text=element_text(size=8))+
-     scale_color_discrete(name="name", labels=c("All", "Forage", "Gadoids", "Inverts"))+
-  geom_line(size=1)+
-  labs(y="Landings (kg)")+
-  guides(color = guide_legend(title = ""))+
-  # geom_hline(data=mean_bio_ind_4x, aes(yintercept=mean_bio, col=name), linetype='dotted')+
-  annotate(geom = "rect",
-           xmin = 2018, xmax = 2022,
-           ymin = -Inf, ymax = Inf,
-           fill = "grey", alpha = 0.2)
-  
-  pb2<-ggplot(land_inv_4x, aes(x = YEAR, y = landings_INVERTEBRATES.L)) +
-  theme_classic()+
-  geom_line(size=1)+
-  labs(y="Invertebrate landings (kg)")+
-  guides(color = guide_legend(title = "Landings"))+
-  geom_hline(data=mean_land_inv_4x, aes(yintercept=mn), linetype='dotted')+
-  annotate(geom = "rect",
-           xmin = 2018, xmax = 2022,
-           ymin = -Inf, ymax = Inf,
-           fill = "grey", alpha = 0.2)
-  
-    pb3<-ggplot(land_for_4x, aes(x = YEAR, y = landings_FORAGE.L)) +
-  theme_classic()+
-  geom_line(size=1)+
-  labs(y="Forage fish landings (kg)")+
-  guides(color = guide_legend(title = "Landings"))+
-  geom_hline(data=mean_land_for_4x, aes(yintercept=mn), linetype='dotted')+
-  annotate(geom = "rect",
-           xmin = 2018, xmax = 2022,
-           ymin = -Inf, ymax = Inf,
-           fill = "grey", alpha = 0.2)
-    
-    pb4<-ggplot(land_gad_4x, aes(x = YEAR, y = landings_GADOIDS.L)) +
-  theme_classic()+
-  geom_line(size=1)+
-  labs(y="Gadoid landings (kg)")+
-  guides(color = guide_legend(title = "Landings"))+
-  geom_hline(data=mean_land_gad_4x, aes(yintercept=mn), linetype='dotted')+
-  annotate(geom = "rect",
-           xmin = 2018, xmax = 2022,
-           ymin = -Inf, ymax = Inf,
-           fill = "grey", alpha = 0.2)
+pb2<-plot_indicator(land_inv_4x, YEAR, landings_INVERTEBRATES.L, y_label="Invertebrate landings (kg)")
+
+pb3<-plot_indicator(land_for_4x, YEAR, landings_FORAGE.L, y_label="Forage fish landings (kg)")  
+
+pb4<-plot_indicator(land_gad_4x, YEAR, landings_GADOIDS.L, y_label="Gadoid landings (kg)")
+
       
-(pb1|pb2)/(pb3|pb4)
+pb1/(pb2|pb3|pb4)
 
 ```
 
