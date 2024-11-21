@@ -45,6 +45,7 @@ require(tinytex)
 require(officer)
 require(devtools)
 install_github("jamiectam/MAReco")
+require(MAReco)
 ```
 
 \newpage
@@ -166,32 +167,10 @@ knitr::include_graphics(here("figures", "annualAnomaly_regimeShift_4X.png"))
         select(YEAR=year, Bottom_Temp=temperature_at_sea_floor)
 
 
-mean_SST <- SST_ind_SS %>% summarise(mn=mean(SST, na.rm=TRUE))
-mean_BottomT <- BottomT_ind_SS %>% summarise(mn=mean(Bottom_Temp, na.rm=TRUE))
-
-pc1<-ggplot(SST_ind_SS, aes(x = YEAR, y = SST)) +
-  theme_classic()+
-  geom_point()+
-  geom_line( size=1)+
-  labs(x="")+
-  # geom_smooth(method=glm, se=F)+
-  geom_hline(data=mean_SST, aes(yintercept=mn), linetype='dotted')+
-  annotate(geom = "rect",
-           xmin = 2016, xmax = 2020,
-           ymin = -Inf, ymax = Inf,
-           fill = "grey", alpha = 0.2)  
-
-pc2<-ggplot(BottomT_ind_SS, aes(x = YEAR, y = Bottom_Temp)) +
-  theme_classic()+
-  geom_point()+
-  geom_line( size=1)+
-  # geom_smooth(method=glm, se=F)+
-    labs(x="")+
-  geom_hline(data=mean_BottomT, aes(yintercept=mn), linetype='dotted')+
-  annotate(geom = "rect",
-           xmin = 2016, xmax = 2020,
-           ymin = -Inf, ymax = Inf,
-           fill = "grey", alpha = 0.2)  
+pc1<-plot_indicator(SST_ind_SS, YEAR, SST, y_label= "SST") 
+ 
+pc2<-plot_indicator(BottomT_ind_SS, YEAR, Bottom_Temp, y_label="Bottom Temperature") 
+ 
   
   pc1|pc2
 ```
@@ -486,44 +465,15 @@ eco_indicators_nafo<- "eco_indicators_nafo.Rdata"
 
 [Yin et al. 2024](https://academic.oup.com/icesjms/advance-article/doi/10.1093/icesjms/fsae110/7758941)
 
-### Commercial effort by Species groups
+### Diversity of discards (catch profiles)
 ```{r fig.align="center", echo = FALSE,fig.width = 10, fig.height=7,fig.pos='H', fig.cap="Commercial effort for different species or species groups in NAFO 4X."}
 dat.dir<-here::here("data")
-commercial_effort_4X<- "commercial_effort_4X.Rdata"
-  load(file.path(dat.dir, commercial_effort_4X))
-  
-CEspp_4X<-commercial_effort_4X |>
-          select(YEAR, SPECIES, n) |>
-          drop_na()|>
-          group_by(YEAR, SPECIES) |>
-          summarise(number=sum(n))|>
-          filter(YEAR>2002)
-         
-CEspp_4X_w<-CEspp_4X |>
-            pivot_wider(names_from = SPECIES, values_from= number)
-
-CEspp_4X_y<-CEspp_4X |>
-            pivot_wider(names_from = YEAR, values_from= number)
+CHP_fixed_major_discards <- "CHP_fixed_major_discards.Rdata"
+  load(file.path(dat.dir, CHP_fixed_major_discards))
+CHP_mobile_major_discards <- "CHP_mobile_major_discards.Rdata"
+  load(file.path(dat.dir, CHP_mobile_major_discards))
 
 
-Total_CE<-commercial_effort_4X|>
-          select(YEAR, n) |>
-          drop_na()|>
-          group_by(YEAR)|>
-          summarise(total_CE=sum(n))|>
-          filter(YEAR>2002)
-          
-Groundfish_CE<-CEspp_4X_w |>
-              select(`GROUNDFISH, UNSPECIFIED`)
-
-lobster_CE<- CEspp_4X_w |>
-            select(LOBSTER, `LOBSTER - GREY ZONE`)
-
-top_CE<-CEspp_4X_w |> 
-        select(`GROUNDFISH, UNSPECIFIED`, LOBSTER, HERRING, `SCALLOP, SEA`, `SEA CUCUMBER`)
-
-alltop_CE<-left_join(top_CE, Total_CE) |>
-            pivot_longer(c(`GROUNDFISH, UNSPECIFIED`, LOBSTER, HERRING, `SCALLOP, SEA`, `SEA CUCUMBER`, `total_CE`))
 
   pq1<-ggplot(alltop_CE, aes(x = YEAR, y = value, color = name)) +
   theme_classic()+
@@ -540,60 +490,51 @@ alltop_CE<-left_join(top_CE, Total_CE) |>
 pq1
 ```
 
-### Commercial effort by Gear types
-```{r fig.align="center", echo = FALSE,fig.width = 10, fig.height=7,fig.pos='H', fig.cap="Commercial effort for gear types in NAFO 4X."}
+### Observer coverage
+```{r fig.align="center", echo = FALSE,fig.width = 10, fig.height=7,fig.pos='H', fig.cap="Observer coverage (%) by gear type for the cod, haddock, pollack fishery in NAFO 4X5Y."}
 dat.dir<-here::here("data")
-commercial_effort_4X<- "commercial_effort_4X.Rdata"
-  load(file.path(dat.dir, commercial_effort_4X))
+CHPobserver_summary <- "CHPobserver_summary.Rdata"
+  load(file.path(dat.dir, CHPobserver_summary))
   
-CEgear_4X<-commercial_effort_4X |>
-          select(YEAR, GEAR_CODE, n) |>
-          drop_na()|>
-          group_by(YEAR, GEAR_CODE) |>
-          summarise(number=sum(n))|>
-          filter(YEAR>2002)
+  
+CHPobserver_fixed_PC<- CHPobserver_summary |> 
+                       select (fleet, year, perc.obs) |> 
+                      filter(fleet=="CHPSfixed4X5Y")
          
-CEgear_4X_w<-CEgear_4X |>
-            pivot_wider(names_from = GEAR_CODE, values_from= number)
+CHPobserver_mobile_PC<- CHPobserver_summary |> 
+                       select (fleet, year, perc.obs) |> 
+                      filter(fleet=="CHPSmob4X5Y")
 
-CEgear_4X_y<-CEgear_4X |>
-            pivot_wider(names_from = YEAR, values_from= number)
+pq1<- MAReco::plot_indicator(CHPobserver_fixed_PC, year, perc.obs, y_label = "Observer coverage fixed gear (%)")
+pq2<- MAReco::plot_indicator(CHPobserver_mobile_PC, year, perc.obs, y_label = "Observer coverage mobile gear (%)")
 
-
-Total_CE<-commercial_effort_4X|>
-          select(YEAR, n) |>
-          drop_na()|>
-          group_by(YEAR)|>
-          summarise(total_CE=sum(n))|>
-          filter(YEAR>2002)
-          
-# groundfish_CE<-CEspp_4X_w |>
-#               select(`GROUNDFISH, UNSPECIFIED`)
-# 
-# lobster_CE<- CEspp_4X_w |>
-#             select(LOBSTER, `LOBSTER - GREY ZONE`)
-
-top_CEgear<-CEgear_4X_w |> 
-        select("71", "12", "51", "41", "62")
-
-alltop_CEgear<-left_join(top_CEgear, Total_CE) |>
-            pivot_longer(c("71", "12", "51", "41", "62", "total_CE"))
-
-  pq2<-ggplot(alltop_CEgear, aes(x = YEAR, y = value, color = name)) +
-  theme_classic()+
-     # theme(legend.position = c(0.6, 0.9), legend.text=element_text(size=8))+
-    # scale_color_discrete(name="name", labels=c("All", "Forage", "Gadoids", "Inverts"))+
-  geom_line(size=1)+
-  labs(y="Number of Trips")+
-  guides(color = guide_legend(title = ""))+
-  # geom_hline(data=mean_bio_ind_4x, aes(yintercept=mean_bio, col=name), linetype='dotted')+
-  annotate(geom = "rect",
-           xmin = 2020, xmax = 2024,
-           ymin = -Inf, ymax = Inf,
-           fill = "grey", alpha = 0.2)
-pq2
+(pq1|pq2)
 ```
 
+### Observed vessels
+```{r fig.align="center", echo = FALSE,fig.width = 10, fig.height=7,fig.pos='H', fig.cap="Observed vessels (%) by gear type for the cod, haddock, pollack fishery in NAFO 4X5Y."}
+dat.dir<-here::here("data")
+CHPobserver_summary <- "CHPobserver_summary.Rdata"
+  load(file.path(dat.dir, CHPobserver_summary))
+  
+  CHPobserver_summary<-CHPobserver_summary |> 
+    mutate (perc.vessels.obs=(obs.vessels/total.vessels)*100)
+  
+  
+CHPvessel_fixed_PC<- CHPobserver_summary |> 
+                       select (fleet, year, perc.vessels.obs) |> 
+                      replace_na(list(perc.vessels.obs = 0)) |> #replace NA with 0
+                      filter(fleet=="CHPSfixed4X5Y")
+         
+CHPvessel_mobile_PC<- CHPobserver_summary |> 
+                       select (fleet, year, perc.vessels.obs) |> 
+                      filter(fleet=="CHPSmob4X5Y")
+
+pr1<- MAReco::plot_indicator(CHPvessel_fixed_PC, year, perc.vessels.obs, y_label = "Observed fixed gear vessels (%)")
+pr2<- MAReco::plot_indicator(CHPvessel_mobile_PC, year, perc.vessels.obs, y_label = "Observed mobile gear vessels (%)")
+
+(pr1|pr2)
+```
 # C. Economic {#economic}
 
 ## Commerical Fishery
