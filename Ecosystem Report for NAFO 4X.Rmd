@@ -473,21 +473,20 @@ CHP_fixed_major_discards <- "CHP_fixed_major_discards.Rdata"
 CHP_mobile_major_discards <- "CHP_mobile_major_discards.Rdata"
   load(file.path(dat.dir, CHP_mobile_major_discards))
 
+CHP_fixed_diversity<- CHP_fixed_major_discards |> 
+  select(year, quarter, H) |> 
+  mutate(quarter= as.factor(quarter))
 
+CHP_mobile_diversity<- CHP_mobile_major_discards |> 
+  select(year, quarter, H) |> 
+  mutate(quarter= as.factor(quarter))
+  
+po1<-plot_catch_diversity(CHP_fixed_diversity, year, H, quarter, y_label="Fixed gear diversity of bycatch", legend_labels=c("Q1", "Q2", "Q3", "Q4"))
 
-  pq1<-ggplot(alltop_CE, aes(x = YEAR, y = value, color = name)) +
-  theme_classic()+
-     # theme(legend.position = c(0.6, 0.9), legend.text=element_text(size=8))+
-    # scale_color_discrete(name="name", labels=c("All", "Forage", "Gadoids", "Inverts"))+
-  geom_line(size=1)+
-  labs(y="Number of Trips")+
-  guides(color = guide_legend(title = ""))+
-  # geom_hline(data=mean_bio_ind_4x, aes(yintercept=mean_bio, col=name), linetype='dotted')+
-  annotate(geom = "rect",
-           xmin = 2020, xmax = 2024,
-           ymin = -Inf, ymax = Inf,
-           fill = "grey", alpha = 0.2)
-pq1
+po2<- plot_catch_diversity(CHP_mobile_diversity, year, H, quarter, y_label="Mobile gear diversity of bycatch", legend_labels=c("Q1", "Q2", "Q3", "Q4"))
+
+po1/po2
+
 ```
 
 ### Observer coverage
